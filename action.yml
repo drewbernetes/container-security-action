@@ -1,0 +1,259 @@
+name: 'Build, Scan and Sign image using Trivy and Cosign'
+description: |
+  Generates a Docker image locally which will then be SBOM'd and scanned. 
+  The SBOM will be scanned and then the image will be scanned to ensure as clean an image as possible.
+branding:
+  icon: layers
+  color: purple
+inputs:
+  use-dockerhub:
+    description: "Set to true to use dockerhub."
+    required: false
+  image-repo:
+    description: "The repo to push the image to."
+    required: true
+  repo-username:
+    description: "The username to log into the repo."
+    required: true
+  repo-password:
+    description: "The password to log into the repo."
+    required: true
+  image-name:
+    description: "The name of the image to build."
+    required: true
+  image-tag:
+    description: "The tag to build the image with - provide a matrix to build against multiple tags as each will need to be SBOM'd, scanned and signed independently."
+    required: true
+  add-latest-tag:
+    description: "Adds the latest tag to the build."
+    required: false
+    default: "false"
+  cosign-private-key:
+    description: "A private key with which to sign the image using cosign."
+    required: true
+  cosign-password:
+    description: "The password to unlock the private key."
+    required: true
+  cosign-tlog:
+    description: "Set to true to upload to tlog for transparency."
+    required: false
+    default: 'false'
+  publish-image:
+    description: "If true the image will be published to the repo."
+    default: 'false'
+    required: false
+  check-severity:
+    description: "A comma deliminated (uppercase) list of severities to check for. If found the pipeline will fail. Support values: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"
+    required: false
+    default: high
+  sbom-fail-on-detection:
+    description: "Must be 0 to succeed or any other number to fail if a severity is discovered at the `check-severity` level. This will be used as the exit code for the Trivy SBOM scan and 1 is recommended to differentiate it from the scan exit code."
+    required: false
+    default: "1"
+  scan-fail-on-detection:
+    description: "Must be 0 to succeed or any other number to fail if a severity is discovered at the `check-severity` level. This will be used as the exit code for the Trivy scan and 2 is recommended to differentiate it from the SBOM exit code."
+    required: false
+    default: "2"
+  trivyignore-file:
+    description: "Supply a Trivy ignore file to ignore specific CVEs and prevent a pipeline failure."
+    required: false
+    default: "trivyignore"
+  trivyignore-from-s3:
+    description: "If disabled, the trivyignore can be supplied via the repo itself but actions/checkout@v4 must be used before calling this action."
+    required: false
+    default: false
+  s3-endpoint:
+    description: "If the endpoint isn't a standard AWS one, pass it in here."
+    required: false
+    default: "https://some-s3-endpoint.com"
+  s3-region:
+    description: "The AWS Region."
+    required: false
+    default: "us-east-1"
+  s3-access-key:
+    description: "The S3 access key."
+    required: false
+    default: ""
+  s3-secret-key:
+    description: "The S3 secret key."
+    required: false
+    default: ""
+  s3-bucket:
+    description: "The S3 bucket in which the trivyignore file is stored."
+    required: false
+    default: "trivy"
+  s3-path:
+    description: "The path in the s3 bucket to the trivyignore file."
+    required: false
+    default: "trivyignore"
+  dockerfile-path:
+    description: "Path to the Dockerfile (default {context}/Dockerfile)."
+    required: false
+    default: "."
+
+runs:
+  using: "composite"
+  steps:
+    - name: Pull From S3
+      if: inputs.trivyignore-from-s3 == 'true'
+      shell: bash
+      env:
+        AWS_ACCESS_KEY_ID: ${{ inputs.s3-access-key }}
+        AWS_SECRET_ACCESS_KEY: ${{ inputs.s3-secret-key }}
+        AWS_DEFAULT_REGION: ${{ inputs.s3-region }}
+      run: |
+        aws --endpoint-url=${{ inputs.s3-endpoint }} s3 cp s3://${{ inputs.s3-bucket }}/${{ inputs.s3-path }} ${{ inputs.trivyignore-file }}
+
+    # Setup Docker buildx
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    # Build the local image
+    - name: Build Local Container
+      uses: docker/build-push-action@v5
+      with:
+        tags: "local/${{ inputs.image-name }}:${{ inputs.image-tag }}"
+        push: false
+        load: true
+        file: "${{inputs.dockerfile-path}}/Dockerfile"
+
+    # Create an SBOM file for the local image and upload the results
+    - name: Create SBOM
+      uses: aquasecurity/trivy-action@0.16.1
+      id: create-sbom
+      with:
+        scan-type: image
+        format: spdx-json
+        vuln-type: ''
+        scanners: ''
+        severity: ''
+        output: "${{ inputs.image-name }}-sbom.spdx.json"
+        image-ref: "local/${{ inputs.image-name }}:${{ inputs.image-tag }}"
+
+    # Upload the SBOM
+    - name: Upload SBOM
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: "${{ inputs.image-name }}-sbom.spdx.json"
+        path: "${{ inputs.image-name }}-sbom.spdx.json"
+
+    # Scan the SBOM
+    - name: Scan SBOM
+      uses: aquasecurity/trivy-action@0.16.1
+      id: scan-sbom
+      with:
+        scan-type: sbom
+        exit-code: ${{ inputs.sbom-fail-on-detection }}
+        ignore-unfixed: true
+        format: json
+        image-ref: "${{ inputs.image-name }}-sbom.spdx.json"
+        output: "${{ inputs.image-name }}-sbom-results.json"
+        vuln-type: ''
+        scanners: ''
+        severity: ${{ inputs.check-severity }}
+        trivyignores: ${{ inputs.trivyignore-file }}
+
+    # Upload the SBOM scan results
+    - name: Upload SBOM Scan Results
+      uses: actions/upload-artifact@v4
+      if: (success() || failure()) && (steps.scan-sbom.conclusion == 'success' || steps.scan-sbom.outcome == 'failure')
+      with:
+        name: "${{ inputs.image-name }}-sbom-results.json"
+        path: "${{ inputs.image-name }}-sbom-results.json"
+
+    # Scan the local image
+    - name: Scan image
+      id: image-scan
+      uses: aquasecurity/trivy-action@0.16.1
+      with:
+        image-ref: "local/${{ inputs.image-name }}:${{ inputs.image-tag }}"
+        format: 'json'
+        output: 'trivy-results.json'
+        exit-code: ${{ inputs.scan-fail-on-detection }}
+        ignore-unfixed: true
+        scanners: 'vuln,secret,config'
+        severity: ${{ inputs.check-severity }}
+        trivyignores: ${{ inputs.trivyignore-file }}
+
+    # Upload the image scan results
+    - name: Upload Container Scan Results
+      uses: actions/upload-artifact@v4
+      if: (success() || failure()) && (steps.image-scan.conclusion == 'success' || steps.image-scan.outcome == 'failure')
+      with:
+        name: "${{ inputs.image-name }}-scan-results.json"
+        path: "trivy-results.json"
+
+    # Install cosign
+    - name: Install Cosign
+      if: inputs.publish-image == 'true'
+      uses: sigstore/cosign-installer@v3.3.0
+
+    ### USING DOCKERHUB ###
+    # Login into registry
+    - name: Login to GitHub Container Registry
+      if: inputs.publish-image == 'true' && inputs.use-dockerhub == 'true'
+      uses: docker/login-action@v3
+      with:
+        username: ${{ inputs.repo-username }}
+        password: ${{ inputs.repo-password }}
+
+    ### USING ALT REPO ###
+    # Login into registry
+    - name: Login to GitHub Container Registry
+      if: inputs.publish-image == 'true' && inputs.use-dockerhub != 'true'
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ inputs.image-repo }}
+        username: ${{ inputs.repo-username }}
+        password: ${{ inputs.repo-password }}
+
+    - name: Get Repo
+      shell: bash
+      if: inputs.publish-image == 'true'
+      run: |
+        export REPO=${{ inputs.image-repo }}/${{ inputs.repo-username }}
+        if [ ${{inputs.use-dockerhub}} ]; then
+          echo "REPO=${{ inputs.image-repo }}" >> "$GITHUB_ENV"
+        else
+          echo "REPO=${{ inputs.image-repo }}/${{ inputs.repo-username }}" >> "$GITHUB_ENV"
+        fi
+
+    # Push the image with the user-defined tag
+    - name: Build and push
+      if: inputs.publish-image == 'true'
+      id: build
+      uses: docker/build-push-action@v5
+      with:
+        platforms: linux/amd64
+        push: true
+        file: "${{inputs.dockerfile-path}}/Dockerfile"
+        tags: |
+          ${{ env.REPO }}/${{ inputs.image-name }}:${{ inputs.image-tag }}
+
+      # Push the image with the latest tag
+    - name: Build and push
+      if: inputs.publish-image == 'true' && inputs.add-latest-tag == 'true'
+      id: build-latest
+      uses: docker/build-push-action@v5
+      with:
+        platforms: linux/amd64
+        push: true
+        file: "${{inputs.dockerfile-path}}/Dockerfile"
+        tags: |
+          ${{ env.REPO }}/${{ inputs.image-name }}:latest
+
+    # Sign images
+    - name: Sign tagged image(s)
+      if: inputs.publish-image == 'true'
+      shell: bash
+      run: |        
+        cosign sign --tlog-upload=${{inputs.cosign-tlog}} --yes --key env://COSIGN_PRIVATE_KEY ${{ env.REPO }}/${{ inputs.image-name }}:${{ inputs.image-tag }}@${{ steps.build.outputs.digest }}
+        
+        if [ ${{inputs.add-latest-tag}} == true ]; then
+          cosign sign --tlog-upload=${{inputs.cosign-tlog}} --yes --key env://COSIGN_PRIVATE_KEY ${{ env.REPO }}/${{ inputs.image-name }}:latest@${{ steps.build-latest.outputs.digest }}
+        fi
+      env:
+        COSIGN_PRIVATE_KEY: ${{inputs.cosign-private-key}}
+        COSIGN_PASSWORD: ${{inputs.cosign-password}}
+        COSIGN_EXPERIMENTAL: "true"
