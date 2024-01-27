@@ -8,12 +8,16 @@
 
 [//]: # (### Deprecated/Removed:)
 
-## [ 2024/01/23 - v0.0.2 ]
+## [ 2024/01/27 - v0.0.2 ]
 
 ### Added/Changed:
 
 * Changed aws- prefixed to s3-prefixed to remove any confusion around aws requirement
 * Updated action versions
+* Added step to determine the repo type based on the repo name. If there is no period, it's presumed a DockerHub registry
+
+### Removed
+* removed `use-dockerhub` as it's determined based on the repo-name.
 
 ## [ 2024/01/23 - v0.0.1 ]
 

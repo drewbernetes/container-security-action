@@ -75,38 +75,39 @@ files.
 ## Signing images with Cosign
 
 The Cosign image signing works by using the standard process used by Cosign.
-You will need to generate the [Cosign keys as described in their documentation](https://docs.sigstore.dev/key_management/overview/) and store these as a secret in GitHub.
+You will need to generate
+the [Cosign keys as described in their documentation](https://docs.sigstore.dev/key_management/overview/) and store
+these as a secret in GitHub.
 This can then be supplied via the `cosign-private-key` and `cosign-password` inputs.
 
 **Hardware token verification is currently not supported.**
 
 ## Inputs
 
-| Name                   | Description                                        | Required | Default                        |
-|------------------------|----------------------------------------------------|----------|--------------------------------|
-| use-dockerhub          | Set to true to use dockerhub.                      | false    | false                          |
-| image-repo             | The repo to push the image to.                     | true     | -                              |
-| repo-username          | The username to log into the repo.                 | true     | -                              |
-| repo-password          | The password to log into the repo.                 | true     | -                              |
-| image-name             | The name of the image to build.                    | true     | -                              |
-| image-tag              | The tag to build the image with.                   | true     | -                              |
-| add-latest-tag         | Adds a latest tag to the image                     | true     | false                          |
-| cosign-private-key     | A private key to sign the image using Cosign.      | true     | -                              |
-| cosign-password        | The password to unlock the private key.            | true     | -                              |
-| cosign-tlog            | Set to true to upload to tlog for transparency.    | false    | 'false'                        |
-| publish-image          | If true, the image will be published to the repo.  | false    | 'false'                        |
-| check-severity         | Comma-delimited list of severities to check for.   | false    | high                           |
-| sbom-fail-on-detection | Exit code for Trivy SBOM scan.                     | false    | "1"                            |
-| scan-fail-on-detection | Exit code for Trivy scan.                          | false    | "2"                            |
-| trivyignore-file       | Trivy ignore file to prevent pipeline failure.     | false    | "trivyignore"                  |
-| trivyignore-from-s3    | Supply trivyignore via S3.                         | false    | false                          |
-| s3-endpoint            | Custom AWS S3 endpoint if not standard.            | false    | "https://some-s3-endpoint.com" |
-| s3-region              | The AWS Region.                                    | false    | "us-east-1"                    |
-| s3-access-key          | The S3 access key.                                 | false    | ""                             |
-| s3-secret-key          | The S3 secret key.                                 | false    | ""                             |
-| s3-bucket              | The S3 bucket for trivyignore file.                | false    | "trivy"                        |
-| s3-path                | The path in the S3 bucket to the trivyignore file. | false    | "trivyignore"                  |
-| dockerfile-path        | Path to the Dockerfile.                            | false    | "."                            |
+| Name                   | Description                                                                                                                                                                                              | Required | Default                        |
+|------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|--------------------------------|
+| image-repo             | The repo to push the image to. This should just be the base url, eg: my-repo or ghcr.io or, if using DockerHub, just the username you'd usually use for your repo (you must also specify use-dockerhub). | true     | -                              |
+| repo-username          | The username to log into the repo.                                                                                                                                                                       | true     | -                              |
+| repo-password          | The password to log into the repo.                                                                                                                                                                       | true     | -                              |
+| image-name             | The name of the image to build.                                                                                                                                                                          | true     | -                              |
+| image-tag              | The tag to build the image with.                                                                                                                                                                         | true     | -                              |
+| add-latest-tag         | Adds a latest tag to the image                                                                                                                                                                           | true     | false                          |
+| cosign-private-key     | A private key to sign the image using Cosign.                                                                                                                                                            | true     | -                              |
+| cosign-password        | The password to unlock the private key.                                                                                                                                                                  | true     | -                              |
+| cosign-tlog            | Set to true to upload to tlog for transparency.                                                                                                                                                          | false    | 'false'                        |
+| publish-image          | If true, the image will be published to the repo.                                                                                                                                                        | false    | 'false'                        |
+| check-severity         | Comma-delimited list of severities to check for.                                                                                                                                                         | false    | high                           |
+| sbom-fail-on-detection | Exit code for Trivy SBOM scan.                                                                                                                                                                           | false    | "1"                            |
+| scan-fail-on-detection | Exit code for Trivy scan.                                                                                                                                                                                | false    | "2"                            |
+| trivyignore-file       | Trivy ignore file to prevent pipeline failure.                                                                                                                                                           | false    | "trivyignore"                  |
+| trivyignore-from-s3    | Supply trivyignore via S3.                                                                                                                                                                               | false    | false                          |
+| s3-endpoint            | Custom AWS S3 endpoint if not standard.                                                                                                                                                                  | false    | "https://some-s3-endpoint.com" |
+| s3-region              | The AWS Region.                                                                                                                                                                                          | false    | "us-east-1"                    |
+| s3-access-key          | The S3 access key.                                                                                                                                                                                       | false    | ""                             |
+| s3-secret-key          | The S3 secret key.                                                                                                                                                                                       | false    | ""                             |
+| s3-bucket              | The S3 bucket for trivyignore file.                                                                                                                                                                      | false    | "trivy"                        |
+| s3-path                | The path in the S3 bucket to the trivyignore file.                                                                                                                                                       | false    | "trivyignore"                  |
+| dockerfile-path        | Path to the Dockerfile.                                                                                                                                                                                  | false    | "."                            |
 
 ## TODO (AKA nice to haves but may not come!):
 
