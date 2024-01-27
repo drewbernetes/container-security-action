@@ -6,12 +6,10 @@ branding:
   icon: layers
   color: purple
 inputs:
-  use-dockerhub:
-    description: "Set to true to use dockerhub."
-    required: false
   image-repo:
-    description: "The repo to push the image to."
+    description: "The repo to push the image to. This should just be the base url, eg: my-repo or ghcr.io or, if using DockerHub, just the username you'd usually use for your repo."
     required: true
+
   repo-username:
     description: "The username to log into the repo."
     required: true
@@ -61,7 +59,7 @@ inputs:
   trivyignore-from-s3:
     description: "If disabled, the trivyignore can be supplied via the repo itself but actions/checkout@v4 must be used before calling this action."
     required: false
-    default: false
+    default: "false"
   s3-endpoint:
     description: "If the endpoint isn't a standard AWS one, pass it in here."
     required: false
@@ -189,35 +187,41 @@ runs:
       if: inputs.publish-image == 'true'
       uses: sigstore/cosign-installer@v3.3.0
 
-    ### USING DOCKERHUB ###
+    - name: Determine Registry
+      if: inputs.publish-image == 'true'
+      shell: bash
+      run: |
+        IS_DOCKERHUB="true"
+        REPO="${{ inputs.image-repo }}"
+        
+        if echo "${{ inputs.image-repo }}" | grep -E -q '\.'; then
+          IS_DOCKERHUB="false"
+        fi
+        
+        if [ "${{ inputs.image-repo }}" == "ghcr.io" ]; then
+          REPO="${{ inputs.image-repo }}/${{ inputs.repo-username }}"
+        fi
+        
+        echo "IS_DOCKERHUB=${IS_DOCKERHUB}" >> "$GITHUB_ENV"
+        echo "REPO=${REPO}" >> "$GITHUB_ENV"
+
     # Login into registry
-    - name: Login to GitHub Container Registry
-      if: inputs.publish-image == 'true' && inputs.use-dockerhub == 'true'
+    ### USING DOCKERHUB ###
+    - name: Login to Docker Registry
+      if: inputs.publish-image == 'true' && env.IS_DOCKERHUB == 'true'
       uses: docker/login-action@v3
       with:
         username: ${{ inputs.repo-username }}
         password: ${{ inputs.repo-password }}
 
-    ### USING ALT REPO ###
-    # Login into registry
-    - name: Login to GitHub Container Registry
-      if: inputs.publish-image == 'true' && inputs.use-dockerhub != 'true'
+    ### USING NON-DOCKERHUB ###
+    - name: Login to Container Registry
+      if: inputs.publish-image == 'true' && env.IS_DOCKERHUB == 'false'
       uses: docker/login-action@v3
       with:
         registry: ${{ inputs.image-repo }}
         username: ${{ inputs.repo-username }}
         password: ${{ inputs.repo-password }}
-
-    - name: Get Repo
-      shell: bash
-      if: inputs.publish-image == 'true'
-      run: |
-        export REPO=${{ inputs.image-repo }}/${{ inputs.repo-username }}
-        if [ ${{inputs.use-dockerhub}} ]; then
-          echo "REPO=${{ inputs.image-repo }}" >> "$GITHUB_ENV"
-        else
-          echo "REPO=${{ inputs.image-repo }}/${{ inputs.repo-username }}" >> "$GITHUB_ENV"
-        fi
 
     # Push the image with the user-defined tag
     - name: Build and push

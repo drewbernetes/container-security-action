@@ -3,6 +3,6 @@
 # Why is it required?
 
 # PR checklist
-- [ ] Run tests locally
-- [ ] Updated Readme
-- [ ] Updated Changelog
+- [ ] Run container-security-action-demo against this branch
+- [ ] Updated Readme (where required)
+- [ ] Updated Changelog (where required)
