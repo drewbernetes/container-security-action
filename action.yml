@@ -185,14 +185,15 @@ runs:
 
     # Upload the SBOM
     - name: Upload SBOM
+      if: inputs.enable-dependency-graph == 'false' && (success() || failure())
       uses: actions/upload-artifact@v4
-      if: always()
       with:
         name: "${{ inputs.image-name }}-sbom.spdx.json"
         path: "${{ inputs.image-name }}-sbom.spdx.json"
 
     # Scan the SBOM
     - name: Scan SBOM
+      if: inputs.enable-dependency-graph == 'false'
       uses: aquasecurity/trivy-action@0.19.0
       id: scan-sbom
       with:
@@ -210,7 +211,7 @@ runs:
     # Upload the SBOM scan results regardless of scan pass or failure
     - name: Upload SBOM Scan Results
       uses: actions/upload-artifact@v4
-      if: (success() || failure()) && (steps.scan-sbom.conclusion == 'success' || steps.scan-sbom.outcome == 'failure')
+      if: (success() || failure()) && (steps.scan-sbom.conclusion == 'success' || steps.scan-sbom.outcome == 'failure') && inputs.enable-dependency-graph == 'false'
       with:
         name: "${{ inputs.image-name }}-sbom-results.json"
         path: "${{ inputs.image-name }}-sbom-results.json"
