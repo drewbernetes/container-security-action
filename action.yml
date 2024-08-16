@@ -155,7 +155,7 @@ runs:
     # Create an SBOM file for the local image and upload the results
     - name: Create SBOM
       if: inputs.enable-dependency-graph == 'false'
-      uses: aquasecurity/trivy-action@0.19.0
+      uses: aquasecurity/trivy-action@0.24.0
       id: create-sbom
       with:
         scan-type: image
@@ -170,7 +170,7 @@ runs:
     # Create an SBOM file for the local image and upload the results
     - name: Create SBOM to Dependency Graph
       if: inputs.enable-dependency-graph == 'true'
-      uses: aquasecurity/trivy-action@0.19.0
+      uses: aquasecurity/trivy-action@0.24.0
       id: create-sbom-deps
       with:
         scan-type: image
@@ -194,7 +194,7 @@ runs:
     # Scan the SBOM
     - name: Scan SBOM
       if: inputs.enable-dependency-graph == 'false'
-      uses: aquasecurity/trivy-action@0.19.0
+      uses: aquasecurity/trivy-action@0.24.0
       id: scan-sbom
       with:
         scan-type: sbom
@@ -219,7 +219,7 @@ runs:
     # Scan the local image
     - name: Scan image
       id: image-scan
-      uses: aquasecurity/trivy-action@0.19.0
+      uses: aquasecurity/trivy-action@0.24.0
       with:
         #        image-ref: "local/${{ inputs.image-name }}:${{ inputs.image-tag }}"
         image-ref: "${{ env.REPO }}/${{ inputs.image-name }}:${{ env.VERSION_TAG }}"
@@ -242,7 +242,7 @@ runs:
     # Install cosign
     - name: Install Cosign
       if: inputs.publish-image == 'true'
-      uses: sigstore/cosign-installer@v3.5.0
+      uses: sigstore/cosign-installer@v3.6.0
 
     # Login into registry
     ### USING DOCKERHUB ###
