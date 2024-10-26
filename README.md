@@ -103,7 +103,7 @@ steps:
   
   ```
   enable-dependency-graph: true
-  dependency-graph-token: < secrets.GITHUB_TOKEN >
+  github-token: < secrets.GITHUB_TOKEN >
   ```
 
   **Hardware token verification is currently not supported.**
@@ -211,10 +211,10 @@ steps:
     # Required: false
     # Default: false
 
-    dependency-graph-token:
+    github-token:
     # This can be a PAT or the GITHUB_TOKEN secret
     #
-    # Required: false
+    # Required: true
     # Default: ""
 
     s3-endpoint:
@@ -281,7 +281,7 @@ steps:
 | `grypeignore-file` | <p>Supply a Grype ignore file to ignore specific CVEs and prevent a pipeline failure.</p> | `false` | `.grype.yaml` |
 | `grypeignore-from-s3` | <p>If disabled, the Grype ignore can be supplied via the repo itself but actions/checkout@v4 must be used before calling this action.</p> | `false` | `false` |
 | `enable-dependency-graph` | <p>Will upload the SBOM to GitHub Dependency Graph - you must enable this and enable write permissions on your workflow for this to work.</p> | `false` | `false` |
-| `dependency-graph-token` | <p>This can be a PAT or the GITHUB_TOKEN secret</p> | `false` | `""` |
+| `github-token` | <p>This can be a PAT or the GITHUB_TOKEN secret</p> | `true` | `""` |
 | `s3-endpoint` | <p>If the endpoint isn't a standard AWS one, pass it in here.</p> | `false` | `https://some-s3-endpoint.com` |
 | `s3-region` | <p>The AWS Region.</p> | `false` | `us-east-1` |
 | `s3-access-key` | <p>The S3 access key.</p> | `false` | `""` |
