@@ -8,6 +8,24 @@
 
 [//]: # (### Deprecated/Removed:)
 
+## [ 2024/10/26 - v0.1.0 ]
+
+### Added/Changed:
+
+* switch to grype and syft for sbom and scans
+
+## [ 2024/08/30 - v0.0.4 ]
+
+### Added/Changed:
+
+* updated modules
+
+## [ 2024/05/04 - v0.0.3 ]
+
+### Added/Changed:
+
+* updated modules
+
 ## [ 2024/01/27 - v0.0.2 ]
 
 ### Added/Changed:
