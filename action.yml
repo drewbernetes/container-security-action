@@ -1,4 +1,4 @@
-name: 'Build, Scan and Sign image using Trivy and Cosign'
+name: 'Build, Scan and Sign image using Grype and Cosign'
 description: |
   Generally speaking when scanning a container you should generate an SBOM and then scan the resulting
   image to ensure you know exactly what vulnerabilities exist within the image and any packages used within it.
@@ -15,14 +15,14 @@ description: |
   not. This action provides consistency and enables the scanning and signing of your containers during the build process,
   not after the push.
   
-  ## Scanning with Trivy
+  ## Scanning with Grype
   
-  Trivy is used to scan the images and
-  a [trivyignore](https://aquasecurity.github.io/trivy/v0.22.0/vulnerability/examples/filter/#by-vulnerability-ids) file
+  Grype is used to scan the images and
+  a `[.grype.yaml](https://github.com/anchore/grype#specifying-matches-to-ignore)` file
   can be supplied to ignore certain CVEs if desired.
   
-  If you wish to use a trivyignore file, then you can store it in the repo that calls this action.
-  Make sure you run `actions/checkout@v4` before calling this action and pass the `trivyignore-file` input parameter.
+  If you wish to use a `.grype.yaml` file, then you can store it in the repo that calls this action.
+  Make sure you run `actions/checkout@v4` before calling this action and pass the `grypeignore-file` input parameter.
   It will automatically be used if the S3 option isn't explicitly enabled.
 
   For example:
@@ -35,21 +35,21 @@ description: |
           uses: drewbernetes/container-security-action@v0.0.4
           with:
             image-repo: "drewviles"
-            repo-username: ${{ secrets.DOCKER_USER }}
-            repo-password: ${{ secrets.DOCKER_PASSWORD }}
+            repo-username: < secrets.DOCKER_USER >
+            repo-password: < secrets.DOCKER_PASSWORD >
             image-name: "csa-demo"
             image-tag: "1.0"
             check-severity: "HIGH,CRITICAL"
-            trivyignore-file: "trivyignore"
+            grypeignore-file: "grypeignore"
             add-latest-tag: "true"
             publish-image: "true"
-            cosign-private-key: ${{secrets.COSIGN_KEY}}
-            cosign-password: ${{secrets.COSIGN_PASSWORD}}
+            cosign-private-key: < secrets.COSIGN_KEY >
+            cosign-password: < secrets.COSIGN_PASSWORD >
             cosign-tlog: false
             dockerfile-path: .
     ```
   
-    If you wish to use the S3 approach, to prevent constantly pushing updated trivyignore files to the source repo, then you
+    If you wish to use the S3 approach, to prevent constantly pushing updated grypeignore files to the source repo, then you
   can supply the following:
   
     ```yaml
@@ -58,27 +58,27 @@ description: |
         uses: drewbernetes/container-security-action@v0.0.4
         with:
           image-repo: "your-registry.example.com/some-project"
-          repo-username: ${{ secrets.REGISTRY_PUBLIC_USER }}
-          repo-password: ${{ secrets.REGISTRY_PUBLIC_PASSWORD }}
+          repo-username: < secrets.REGISTRY_PUBLIC_USER >
+          repo-password: < secrets.REGISTRY_PUBLIC_PASSWORD >
           image-name: "csa-demo"
           image-tag: "1.0"
           check-severity: "MEDIUM,HIGH,CRITICAL"
-          trivyignore-from-s3: true
+          grypeignore-from-s3: true
           s3-endpoint: "https://s3.example.com"
-          s3-access-key: ${{secrets.S3_ACCESS_KEY}}
-          s3-secret-key: ${{secrets.S3_SECRET_KEY}}
-          s3-bucket: "trivyignores"
+          s3-access-key: < secrets.S3_ACCESS_KEY >
+          s3-secret-key: < secrets.S3_SECRET_KEY >
+          s3-bucket: "grypeignores"
           s3-path: "image-ignorefile"
           add-latest-tag: "false"
           publish-image: "true"
-          cosign-private-key: ${{secrets.COSIGN_KEY}}
-          cosign-password: ${{secrets.COSIGN_PASSWORD}}
+          cosign-private-key: < secrets.COSIGN_KEY >
+          cosign-password: < secrets.COSIGN_PASSWORD >
           cosign-tlog: true
           dockerfile-path: .
     ```
   
-    If you also supply the `trivyignore-file` input when using the above, then this will be used as the resulting filename
-    when the trivyignore file is pulled from s3. It won't use any file in the source repo as S3 overrides local trivyignore
+    If you also supply the `grypeignore-file` input when using the above, then this will be used as the resulting filename
+    when the grypeignore file is pulled from s3. It won't use any file in the source repo as S3 overrides local grypeignore
     files.
   
     ## Signing images with Cosign
@@ -91,12 +91,12 @@ description: |
   
     ## Publishing Results
   
-    The resulst of the scan will be uploaded as artifacts within the repo however, if you have it enabled, you can have 
+    The result of the scan will be uploaded as artifacts within the repo however, if you have it enabled, you can have 
     this pushed to the GitHub Dependency graph instead by adding the following input parameters:
     
     ```
     enable-dependency-graph: true
-    dependency-graph-token: ${{ secrets.GITHUB_TOKEN }}
+    github-token: < secrets.GITHUB_TOKEN >
     ```
   
     **Hardware token verification is currently not supported.**
@@ -145,32 +145,28 @@ inputs:
     default: 'false'
     required: false
   check-severity:
-    description: "A comma deliminated (uppercase) list of severities to check for. If found the pipeline will fail. Support values: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"
+    description: "A comma delimited (uppercase) list of severities to check for. If found the pipeline will fail. Support values: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"
     required: false
     default: high
-  sbom-fail-on-detection:
-    description: "Must be 0 to succeed or any other number to fail if a severity is discovered at the `check-severity` level. This will be used as the exit code for the Trivy SBOM scan and 1 is recommended to differentiate it from the scan exit code."
+  severity-fail-on-detection:
+    description: "Whether or not to fail the build should a 'check-severity' level vulnerability be found."
     required: false
-    default: "1"
-  scan-fail-on-detection:
-    description: "Must be 0 to succeed or any other number to fail if a severity is discovered at the `check-severity` level. This will be used as the exit code for the Trivy scan and 2 is recommended to differentiate it from the SBOM exit code."
+    default: 'true'
+  grypeignore-file:
+    description: "Supply a Grype ignore file to ignore specific CVEs and prevent a pipeline failure."
     required: false
-    default: "2"
-  trivyignore-file:
-    description: "Supply a Trivy ignore file to ignore specific CVEs and prevent a pipeline failure."
-    required: false
-    default: "trivyignore"
-  trivyignore-from-s3:
-    description: "If disabled, the trivyignore can be supplied via the repo itself but actions/checkout@v4 must be used before calling this action."
+    default: ".grype.yaml"
+  grypeignore-from-s3:
+    description: "If disabled, the Grype ignore can be supplied via the repo itself but actions/checkout@v4 must be used before calling this action."
     required: false
     default: "false"
   enable-dependency-graph:
     description: "Will upload the SBOM to GitHub Dependency Graph - you must enable this and enable write permissions on your workflow for this to work."
     required: false
     default: "false"
-  dependency-graph-token:
+  github-token:
     description: "This can be a PAT or the GITHUB_TOKEN secret"
-    required: false
+    required: true
   s3-endpoint:
     description: "If the endpoint isn't a standard AWS one, pass it in here."
     required: false
@@ -188,13 +184,13 @@ inputs:
     required: false
     default: ""
   s3-bucket:
-    description: "The S3 bucket in which the trivyignore file is stored."
+    description: "The S3 bucket in which the grype ignore file is stored."
     required: false
-    default: "trivy"
+    default: "grypeignores"
   s3-path:
-    description: "The path in the s3 bucket to the trivyignore file."
+    description: "The path in the s3 bucket to the grype ignore file."
     required: false
-    default: "trivyignore"
+    default: ".grype.yaml"
   dockerfile-path:
     description: "Path to the Dockerfile (default {context}/Dockerfile)."
     required: false
@@ -205,14 +201,17 @@ runs:
   steps:
     - uses: actions/checkout@v4
     - name: Pull From S3
-      if: inputs.trivyignore-from-s3 == 'true'
+      if: inputs.grypeignore-from-s3 == 'true'
       shell: bash
       env:
         AWS_ACCESS_KEY_ID: ${{ inputs.s3-access-key }}
         AWS_SECRET_ACCESS_KEY: ${{ inputs.s3-secret-key }}
         AWS_DEFAULT_REGION: ${{ inputs.s3-region }}
       run: |
-        aws --endpoint-url=${{ inputs.s3-endpoint }} s3 cp s3://${{ inputs.s3-bucket }}/${{ inputs.s3-path }} ${{ inputs.trivyignore-file }}
+        aws --endpoint-url=${{ inputs.s3-endpoint }} s3 cp s3://${{ inputs.s3-bucket }}/${{ inputs.s3-path }} ${{ inputs.grypeignore-file }}
+        if [[ "${{ inputs.grypeignore-file }}" -ne ".grype.yaml" ]]; then
+          cp ${{ inputs.grypeignore-file }} .grype.yaml
+        fi
 
     - name: Determine Registry and Tags
       shell: bash
@@ -257,84 +256,45 @@ runs:
           docker buildx build -t ${{ env.REPO }}/${{ inputs.image-name }}:${tag} -f "${{inputs.dockerfile-path}}/Dockerfile" .
         done
 
+
     # Create an SBOM file for the local image and upload the results
-    - name: Create SBOM
-      if: inputs.enable-dependency-graph == 'false'
-      uses: aquasecurity/trivy-action@0.24.0
-      id: create-sbom
+    - name: Create SBOM (Push to Dependency Graph if enabled)
+      uses: anchore/sbom-action@v0
       with:
-        scan-type: image
         format: spdx-json
-        vuln-type: ''
-        scanners: ''
-        severity: ''
-        output: "${{ inputs.image-name }}-sbom.spdx.json"
-        image-ref: "${{ env.REPO }}/${{ inputs.image-name }}:${{ env.VERSION_TAG }}"
-    #        image-ref: "local/${{ inputs.image-name }}:${{ inputs.image-tag }}"
-
-    # Create an SBOM file for the local image and upload the results
-    - name: Create SBOM to Dependency Graph
-      if: inputs.enable-dependency-graph == 'true'
-      uses: aquasecurity/trivy-action@0.24.0
-      id: create-sbom-deps
-      with:
-        scan-type: image
-        format: github
-        vuln-type: ''
-        scanners: ''
-        severity: ''
-        output: "${{ inputs.image-name }}-sbom.spdx.json"
-        image-ref: "${{ env.REPO }}/${{ inputs.image-name }}:${{ env.VERSION_TAG }}"
-        github-pat: ${{ inputs.dependency-graph-token }}
-    #        image-ref: "local/${{ inputs.image-name }}:${{ inputs.image-tag }}"
-
-    # Upload the SBOM
-    - name: Upload SBOM
-      if: inputs.enable-dependency-graph == 'false' && (success() || failure())
-      uses: actions/upload-artifact@v4
-      with:
-        name: "${{ inputs.image-name }}-sbom.spdx.json"
-        path: "${{ inputs.image-name }}-sbom.spdx.json"
+        output-file: "${{ inputs.image-name }}-sbom.spdx.json"
+        image: "${{ env.REPO }}/${{ inputs.image-name }}:${{ env.VERSION_TAG }}"
+        dependency-snapshot: ${{ inputs.enable-dependency-graph }}
+        github-token: ${{ inputs.github-token }}
 
     # Scan the SBOM
     - name: Scan SBOM
-      if: inputs.enable-dependency-graph == 'false'
-      uses: aquasecurity/trivy-action@0.24.0
+      uses: anchore/scan-action@v5
       id: scan-sbom
       with:
-        scan-type: sbom
-        exit-code: ${{ inputs.sbom-fail-on-detection }}
-        ignore-unfixed: true
-        format: json
-        scan-ref: "${{ inputs.image-name }}-sbom.spdx.json"
-        output: "${{ inputs.image-name }}-sbom-results.json"
-        vuln-type: ''
-        scanners: ''
-        severity: ${{ inputs.check-severity }}
-        trivyignores: ${{ inputs.trivyignore-file }}
+        sbom: "${{ inputs.image-name }}-sbom.spdx.json"
+        fail-build: ${{ inputs.severity-fail-on-detection }}
+        severity-cutoff: ${{ inputs.check-severity }}
+        cache-db: true
+        output-format: json
 
     # Upload the SBOM scan results regardless of scan pass or failure
     - name: Upload SBOM Scan Results
       uses: actions/upload-artifact@v4
-      if: (success() || failure()) && (steps.scan-sbom.conclusion == 'success' || steps.scan-sbom.outcome == 'failure') && inputs.enable-dependency-graph == 'false'
+      if: (success() || failure()) && (steps.scan-sbom.conclusion == 'success' || steps.scan-sbom.outcome == 'failure')
       with:
         name: "${{ inputs.image-name }}-sbom-results.json"
-        path: "${{ inputs.image-name }}-sbom-results.json"
+        path: "${{ steps.scan-sbom.outputs.json }}"
 
     # Scan the local image
     - name: Scan image
       id: image-scan
-      uses: aquasecurity/trivy-action@0.24.0
+      uses: anchore/scan-action@v5
       with:
-        #        image-ref: "local/${{ inputs.image-name }}:${{ inputs.image-tag }}"
-        image-ref: "${{ env.REPO }}/${{ inputs.image-name }}:${{ env.VERSION_TAG }}"
-        format: 'json'
-        output: 'trivy-results.json'
-        exit-code: ${{ inputs.scan-fail-on-detection }}
-        ignore-unfixed: true
-        scanners: 'vuln,secret,config'
-        severity: ${{ inputs.check-severity }}
-        trivyignores: ${{ inputs.trivyignore-file }}
+        image: "${{ env.REPO }}/${{ inputs.image-name }}:${{ env.VERSION_TAG }}"
+        output-format: 'json'
+        fail-build: ${{ inputs.severity-fail-on-detection }}
+        severity-cutoff: ${{ inputs.check-severity }}
 
     # Upload the image scan results regardless of scan pass or failure
     - name: Upload Container Scan Results
@@ -342,7 +302,7 @@ runs:
       if: (success() || failure()) && (steps.image-scan.conclusion == 'success' || steps.image-scan.outcome == 'failure')
       with:
         name: "${{ inputs.image-name }}-scan-results.json"
-        path: "trivy-results.json"
+        path: "${{ steps.image-scan.outputs.json }}"
 
     # Install cosign
     - name: Install Cosign
