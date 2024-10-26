@@ -22,14 +22,14 @@ Some container registries provide scanning and signing support as part and parce
 not. This action provides consistency and enables the scanning and signing of your containers during the build process,
 not after the push.
 
-## Scanning with Trivy
+## Scanning with Grype
 
-Trivy is used to scan the images and
-a [trivyignore](https://aquasecurity.github.io/trivy/v0.22.0/vulnerability/examples/filter/#by-vulnerability-ids) file
+Grype is used to scan the images and
+a `[.grype.yaml](https://github.com/anchore/grype#specifying-matches-to-ignore)` file
 can be supplied to ignore certain CVEs if desired.
 
-If you wish to use a trivyignore file, then you can store it in the repo that calls this action.
-Make sure you run `actions/checkout@v4` before calling this action and pass the `trivyignore-file` input parameter.
+If you wish to use a `.grype.yaml` file, then you can store it in the repo that calls this action.
+Make sure you run `actions/checkout@v4` before calling this action and pass the `grypeignore-file` input parameter.
 It will automatically be used if the S3 option isn't explicitly enabled.
 
 For example:
@@ -42,21 +42,21 @@ steps:
         uses: drewbernetes/container-security-action@v0.0.4
         with:
           image-repo: "drewviles"
-          repo-username: ${{ secrets.DOCKER_USER }}
-          repo-password: ${{ secrets.DOCKER_PASSWORD }}
+          repo-username: < secrets.DOCKER_USER >
+          repo-password: < secrets.DOCKER_PASSWORD >
           image-name: "csa-demo"
           image-tag: "1.0"
           check-severity: "HIGH,CRITICAL"
-          trivyignore-file: "trivyignore"
+          grypeignore-file: "grypeignore"
           add-latest-tag: "true"
           publish-image: "true"
-          cosign-private-key: ${{secrets.COSIGN_KEY}}
-          cosign-password: ${{secrets.COSIGN_PASSWORD}}
+          cosign-private-key: < secrets.COSIGN_KEY >
+          cosign-password: < secrets.COSIGN_PASSWORD >
           cosign-tlog: false
           dockerfile-path: .
   ```
 
-  If you wish to use the S3 approach, to prevent constantly pushing updated trivyignore files to the source repo, then you
+  If you wish to use the S3 approach, to prevent constantly pushing updated grypeignore files to the source repo, then you
 can supply the following:
 
   ```yaml
@@ -65,27 +65,27 @@ steps:
       uses: drewbernetes/container-security-action@v0.0.4
       with:
         image-repo: "your-registry.example.com/some-project"
-        repo-username: ${{ secrets.REGISTRY_PUBLIC_USER }}
-        repo-password: ${{ secrets.REGISTRY_PUBLIC_PASSWORD }}
+        repo-username: < secrets.REGISTRY_PUBLIC_USER >
+        repo-password: < secrets.REGISTRY_PUBLIC_PASSWORD >
         image-name: "csa-demo"
         image-tag: "1.0"
         check-severity: "MEDIUM,HIGH,CRITICAL"
-        trivyignore-from-s3: true
+        grypeignore-from-s3: true
         s3-endpoint: "https://s3.example.com"
-        s3-access-key: ${{secrets.S3_ACCESS_KEY}}
-        s3-secret-key: ${{secrets.S3_SECRET_KEY}}
-        s3-bucket: "trivyignores"
+        s3-access-key: < secrets.S3_ACCESS_KEY >
+        s3-secret-key: < secrets.S3_SECRET_KEY >
+        s3-bucket: "grypeignores"
         s3-path: "image-ignorefile"
         add-latest-tag: "false"
         publish-image: "true"
-        cosign-private-key: ${{secrets.COSIGN_KEY}}
-        cosign-password: ${{secrets.COSIGN_PASSWORD}}
+        cosign-private-key: < secrets.COSIGN_KEY >
+        cosign-password: < secrets.COSIGN_PASSWORD >
         cosign-tlog: true
         dockerfile-path: .
   ```
 
-  If you also supply the `trivyignore-file` input when using the above, then this will be used as the resulting filename
-  when the trivyignore file is pulled from s3. It won't use any file in the source repo as S3 overrides local trivyignore
+  If you also supply the `grypeignore-file` input when using the above, then this will be used as the resulting filename
+  when the grypeignore file is pulled from s3. It won't use any file in the source repo as S3 overrides local grypeignore
   files.
 
   ## Signing images with Cosign
@@ -98,12 +98,12 @@ steps:
 
   ## Publishing Results
 
-  The resulst of the scan will be uploaded as artifacts within the repo however, if you have it enabled, you can have 
+  The result of the scan will be uploaded as artifacts within the repo however, if you have it enabled, you can have 
   this pushed to the GitHub Dependency graph instead by adding the following input parameters:
   
   ```
   enable-dependency-graph: true
-  dependency-graph-token: ${{ secrets.GITHUB_TOKEN }}
+  dependency-graph-token: < secrets.GITHUB_TOKEN >
   ```
 
   **Hardware token verification is currently not supported.**
@@ -182,31 +182,25 @@ steps:
     # Default: false
 
     check-severity:
-    # A comma deliminated (uppercase) list of severities to check for. If found the pipeline will fail. Support values: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
+    # A comma delimited (uppercase) list of severities to check for. If found the pipeline will fail. Support values: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
     #
     # Required: false
     # Default: high
 
-    sbom-fail-on-detection:
-    # Must be 0 to succeed or any other number to fail if a severity is discovered at the `check-severity` level. This will be used as the exit code for the Trivy SBOM scan and 1 is recommended to differentiate it from the scan exit code.
+    severity-fail-on-detection:
+    # Whether or not to fail the build should a 'check-severity' level vulnerability be found.
     #
     # Required: false
-    # Default: 1
+    # Default: true
 
-    scan-fail-on-detection:
-    # Must be 0 to succeed or any other number to fail if a severity is discovered at the `check-severity` level. This will be used as the exit code for the Trivy scan and 2 is recommended to differentiate it from the SBOM exit code.
+    grypeignore-file:
+    # Supply a Grype ignore file to ignore specific CVEs and prevent a pipeline failure.
     #
     # Required: false
-    # Default: 2
+    # Default: .grype.yaml
 
-    trivyignore-file:
-    # Supply a Trivy ignore file to ignore specific CVEs and prevent a pipeline failure.
-    #
-    # Required: false
-    # Default: trivyignore
-
-    trivyignore-from-s3:
-    # If disabled, the trivyignore can be supplied via the repo itself but actions/checkout@v4 must be used before calling this action.
+    grypeignore-from-s3:
+    # If disabled, the Grype ignore can be supplied via the repo itself but actions/checkout@v4 must be used before calling this action.
     #
     # Required: false
     # Default: false
@@ -248,16 +242,16 @@ steps:
     # Default: ""
 
     s3-bucket:
-    # The S3 bucket in which the trivyignore file is stored.
+    # The S3 bucket in which the grype ignore file is stored.
     #
     # Required: false
-    # Default: trivy
+    # Default: grypeignores
 
     s3-path:
-    # The path in the s3 bucket to the trivyignore file.
+    # The path in the s3 bucket to the grype ignore file.
     #
     # Required: false
-    # Default: trivyignore
+    # Default: .grype.yaml
 
     dockerfile-path:
     # Path to the Dockerfile (default {context}/Dockerfile).
@@ -282,18 +276,17 @@ steps:
 | `cosign-password` | <p>The password to unlock the private key.</p> | `true` | `""` |
 | `cosign-tlog` | <p>Set to true to upload to tlog for transparency.</p> | `false` | `false` |
 | `publish-image` | <p>If true the image will be published to the repo.</p> | `false` | `false` |
-| `check-severity` | <p>A comma deliminated (uppercase) list of severities to check for. If found the pipeline will fail. Support values: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL</p> | `false` | `high` |
-| `sbom-fail-on-detection` | <p>Must be 0 to succeed or any other number to fail if a severity is discovered at the <code>check-severity</code> level. This will be used as the exit code for the Trivy SBOM scan and 1 is recommended to differentiate it from the scan exit code.</p> | `false` | `1` |
-| `scan-fail-on-detection` | <p>Must be 0 to succeed or any other number to fail if a severity is discovered at the <code>check-severity</code> level. This will be used as the exit code for the Trivy scan and 2 is recommended to differentiate it from the SBOM exit code.</p> | `false` | `2` |
-| `trivyignore-file` | <p>Supply a Trivy ignore file to ignore specific CVEs and prevent a pipeline failure.</p> | `false` | `trivyignore` |
-| `trivyignore-from-s3` | <p>If disabled, the trivyignore can be supplied via the repo itself but actions/checkout@v4 must be used before calling this action.</p> | `false` | `false` |
+| `check-severity` | <p>A comma delimited (uppercase) list of severities to check for. If found the pipeline will fail. Support values: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL</p> | `false` | `high` |
+| `severity-fail-on-detection` | <p>Whether or not to fail the build should a 'check-severity' level vulnerability be found.</p> | `false` | `true` |
+| `grypeignore-file` | <p>Supply a Grype ignore file to ignore specific CVEs and prevent a pipeline failure.</p> | `false` | `.grype.yaml` |
+| `grypeignore-from-s3` | <p>If disabled, the Grype ignore can be supplied via the repo itself but actions/checkout@v4 must be used before calling this action.</p> | `false` | `false` |
 | `enable-dependency-graph` | <p>Will upload the SBOM to GitHub Dependency Graph - you must enable this and enable write permissions on your workflow for this to work.</p> | `false` | `false` |
 | `dependency-graph-token` | <p>This can be a PAT or the GITHUB_TOKEN secret</p> | `false` | `""` |
 | `s3-endpoint` | <p>If the endpoint isn't a standard AWS one, pass it in here.</p> | `false` | `https://some-s3-endpoint.com` |
 | `s3-region` | <p>The AWS Region.</p> | `false` | `us-east-1` |
 | `s3-access-key` | <p>The S3 access key.</p> | `false` | `""` |
 | `s3-secret-key` | <p>The S3 secret key.</p> | `false` | `""` |
-| `s3-bucket` | <p>The S3 bucket in which the trivyignore file is stored.</p> | `false` | `trivy` |
-| `s3-path` | <p>The path in the s3 bucket to the trivyignore file.</p> | `false` | `trivyignore` |
+| `s3-bucket` | <p>The S3 bucket in which the grype ignore file is stored.</p> | `false` | `grypeignores` |
+| `s3-path` | <p>The path in the s3 bucket to the grype ignore file.</p> | `false` | `.grype.yaml` |
 | `dockerfile-path` | <p>Path to the Dockerfile (default {context}/Dockerfile).</p> | `false` | `.` |
 <!-- action-docs-inputs source="action.yml" -->
