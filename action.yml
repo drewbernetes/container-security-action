@@ -212,7 +212,7 @@ runs:
         AWS_DEFAULT_REGION: ${{ inputs.s3-region }}
       run: |
         aws --endpoint-url=${{ inputs.s3-endpoint }} s3 cp s3://${{ inputs.s3-bucket }}/${{ inputs.s3-path }} ${{ inputs.grypeignore-file }}
-        if [[ "${{ inputs.grypeignore-file }}" -ne ".grype.yaml" ]]; then
+        if [[ "${{ inputs.grypeignore-file }}" != ".grype.yaml" ]]; then
           cp ${{ inputs.grypeignore-file }} .grype.yaml
         fi
 
