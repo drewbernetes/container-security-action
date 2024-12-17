@@ -160,6 +160,9 @@ inputs:
     description: "If disabled, the Grype ignore can be supplied via the repo itself but actions/checkout@v4 must be used before calling this action."
     required: false
     default: "false"
+  ignore-not-fixed:
+    description: "If true, CVEs that do not have a fixed version will be ignored"
+    default: "false"
   enable-dependency-graph:
     description: "Will upload the SBOM to GitHub Dependency Graph - you must enable this and enable write permissions on your workflow for this to work."
     required: false
@@ -277,6 +280,7 @@ runs:
         severity-cutoff: ${{ inputs.check-severity }}
         cache-db: true
         output-format: json
+        only-fixed: ${{ inputs.ignore-not-fixed }}
 
     # Upload the SBOM scan results regardless of scan pass or failure
     - name: Upload SBOM Scan Results
@@ -295,6 +299,7 @@ runs:
         output-format: 'json'
         fail-build: ${{ inputs.severity-fail-on-detection }}
         severity-cutoff: ${{ inputs.check-severity }}
+        only-fixed: ${{ inputs.ignore-not-fixed }}
 
     # Upload the image scan results regardless of scan pass or failure
     - name: Upload Container Scan Results

@@ -1,48 +1,50 @@
 # Changelog
 
-[//]: # (## Upcoming)
+All notable changes to this project will be documented in this file.
 
-[//]: # (### Added/Changed:)
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [0.1.0] - 2024-10-26
 
-[//]: # (### Fixes:)
+### Changed
 
-[//]: # (### Deprecated/Removed:)
 
-## [ 2024/10/26 - v0.1.0 ]
+- Updating readme
+- Switching to grype for scanning and sbom creation
+- Updated changelog
+- Updated readme
 
-### Added/Changed:
 
-* switch to grype and syft for sbom and scans
+## [0.0.4] - 2024-08-16
 
-## [ 2024/08/30 - v0.0.4 ]
+### Changed
 
-### Added/Changed:
 
-* updated modules
+- Updating actions
 
-## [ 2024/05/04 - v0.0.3 ]
 
-### Added/Changed:
+## [0.0.3] - 2024-05-04
 
-* updated modules
+### Changed
 
-## [ 2024/01/27 - v0.0.2 ]
 
-### Added/Changed:
+- Reworked code to improve action speed, updated trivy and added support for deps-graph
+- Updated upload and scan sbom section to run only when deps-graph is disabled
 
-* Changed aws- prefixed to s3-prefixed to remove any confusion around aws requirement
-* Updated action versions
-* Added step to determine the repo type based on the repo name. If there is no period, it's presumed a DockerHub registry
+
+## [0.0.2] - 2024-01-27
 
 ### Removed
-* removed `use-dockerhub` as it's determined based on the repo-name.
 
-## [ 2024/01/23 - v0.0.1 ]
 
-### Added/Changed:
+- Removed use-dockerhub
 
-* Added Trivy for SBOM creation and scanning
-* Added ability to provide a `.trivyignore` file to bypass particular CVE checks
-* Only fixed vulns will cause a failure, unfixed will appear in a report
-* Image signing done via cosign
-* Added optional tlog uploads for cosign
+
+## [0.0.1] - 2024-01-23
+
+### Changed
+
+
+- Initial commit
+
+
