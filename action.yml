@@ -22,7 +22,7 @@ description: |
   can be supplied to ignore certain CVEs if desired.
   
   If you wish to use a `.grype.yaml` file, then you can store it in the repo that calls this action.
-  Make sure you run `actions/checkout@v4` before calling this action and pass the `grypeignore-file` input parameter.
+  Make sure you run `actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683` before calling this action and pass the `grypeignore-file` input parameter.
   It will automatically be used if the S3 option isn't explicitly enabled.
 
   For example:
@@ -30,7 +30,7 @@ description: |
     ```yaml
   steps:
       - name: Checkout Repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         - name: Build, Scan and Sign Image
           uses: drewbernetes/container-security-action@v0.0.4
           with:
@@ -130,6 +130,8 @@ inputs:
     description: "Adds the latest tag to the build."
     required: false
     default: "false"
+  build-args:
+    description: "Add additional build args via the --build-arg flag. this should be a comma separated list like 'SOME_KEY=SOME_VALUE,ANOTHER_KEY=ANOTHER_VALUE'"
   cosign-private-key:
     description: "A private key with which to sign the image using cosign."
     required: true
@@ -157,7 +159,7 @@ inputs:
     required: false
     default: ".grype.yaml"
   grypeignore-from-s3:
-    description: "If disabled, the Grype ignore can be supplied via the repo itself but actions/checkout@v4 must be used before calling this action."
+    description: "If disabled, the Grype ignore can be supplied via the repo itself but actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 must be used before calling this action."
     required: false
     default: "false"
   ignore-not-fixed:
@@ -202,7 +204,7 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
     - name: Pull From S3
       if: inputs.grypeignore-from-s3 == 'true'
       shell: bash
@@ -255,14 +257,22 @@ runs:
     - name: Build Docker Image and Tag
       shell: bash
       run: |
+        # Parse build arguments if provided
+        BUILD_ARGS=""
+        if [[ -n "${{ inputs.build-args }}" ]]; then
+          IFS=',' read -ra ARG_ARRAY <<< "${{ inputs.build-args }}"
+          for arg in "${ARG_ARRAY[@]}"; do
+            BUILD_ARGS="${BUILD_ARGS} --build-arg ${arg}"
+          done
+        fi
+        
         for tag in ${TAGS[@]}; do
-          docker buildx build -t ${{ env.REPO }}/${{ inputs.image-name }}:${tag} -f "${{inputs.dockerfile-path}}/Dockerfile" .
+          docker buildx build ${BUILD_ARGS} -t ${{ env.REPO }}/${{ inputs.image-name }}:${tag} -f "${{inputs.dockerfile-path}}/Dockerfile" .
         done
-
 
     # Create an SBOM file for the local image and upload the results
     - name: Create SBOM (Push to Dependency Graph if enabled)
-      uses: anchore/sbom-action@v0
+      uses: anchore/sbom-action@e11c554f704a0b820cbf8c51673f6945e0731532
       with:
         format: spdx-json
         output-file: "${{ inputs.image-name }}-sbom.spdx.json"
@@ -272,7 +282,7 @@ runs:
 
     # Scan the SBOM
     - name: Scan SBOM
-      uses: anchore/scan-action@v5
+      uses: anchore/scan-action@2c901ab7378897c01b8efaa2d0c9bf519cc64b9e
       id: scan-sbom
       with:
         sbom: "${{ inputs.image-name }}-sbom.spdx.json"
@@ -284,7 +294,7 @@ runs:
 
     # Upload the SBOM scan results regardless of scan pass or failure
     - name: Upload SBOM Scan Results
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
       if: (success() || failure()) && (steps.scan-sbom.conclusion == 'success' || steps.scan-sbom.outcome == 'failure')
       with:
         name: "${{ inputs.image-name }}-sbom-results.json"
@@ -293,7 +303,7 @@ runs:
     # Scan the local image
     - name: Scan image
       id: image-scan
-      uses: anchore/scan-action@v5
+      uses: anchore/scan-action@2c901ab7378897c01b8efaa2d0c9bf519cc64b9e
       with:
         image: "${{ env.REPO }}/${{ inputs.image-name }}:${{ env.VERSION_TAG }}"
         output-format: 'json'
@@ -303,7 +313,7 @@ runs:
 
     # Upload the image scan results regardless of scan pass or failure
     - name: Upload Container Scan Results
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
       if: (success() || failure()) && (steps.image-scan.conclusion == 'success' || steps.image-scan.outcome == 'failure')
       with:
         name: "${{ inputs.image-name }}-scan-results.json"
@@ -312,13 +322,13 @@ runs:
     # Install cosign
     - name: Install Cosign
       if: inputs.publish-image == 'true'
-      uses: sigstore/cosign-installer@v3.6.0
+      uses: sigstore/cosign-installer@3454372f43399081ed03b604cb2d021dabca52bb
 
     # Login into registry
     ### USING DOCKERHUB ###
     - name: Login to Docker Registry
       if: inputs.publish-image == 'true' && env.IS_DOCKERHUB == 'true'
-      uses: docker/login-action@v3
+      uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772
       with:
         username: ${{ inputs.repo-username }}
         password: ${{ inputs.repo-password }}
@@ -326,7 +336,7 @@ runs:
     ### USING NON-DOCKERHUB ###
     - name: Login to Container Registry
       if: inputs.publish-image == 'true' && env.IS_DOCKERHUB == 'false'
-      uses: docker/login-action@v3
+      uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772
       with:
         registry: ${{ inputs.image-repo }}
         username: ${{ inputs.repo-username }}
