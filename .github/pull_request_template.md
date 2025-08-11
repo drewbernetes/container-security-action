@@ -5,4 +5,3 @@
 # PR checklist
 - [ ] Run container-security-action-demo against this branch
 - [ ] Updated Readme (where required)
-- [ ] Updated Changelog (where required)
