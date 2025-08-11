@@ -15,18 +15,18 @@ jobs:
     steps:
       - name: Generate a token
         id: generate-token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@0f859bf9e69e887678d5bbfbee594437cb440ffe # v2.1.0
         with:
-          app-id: ${{ vars.ACTIONS_BOT_APP_ID }}
+          app-id: ${{ secrets.ACTIONS_BOT_APP_ID }}
           private-key: ${{ secrets.ACTIONS_BOT_APP_PK }}
 
       - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
         with:
           fetch-depth: 0
 
       - name: Generate changelog
-        uses: orhun/git-cliff-action@4a4a951bc43fafe41cd2348d181853f52356bee7
+        uses: orhun/git-cliff-action@98c93442bb05a455a77bee982867857ae748eeea # v4.5.1
         with:
           config: cliff.toml
           args: "--verbose --bump"
@@ -37,7 +37,7 @@ jobs:
 
       - name: Create or Update Changelog File
         id: create-changelog
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # main
         with:
           github-token: ${{ steps.generate-token.outputs.token }}
           script: |
