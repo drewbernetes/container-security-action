@@ -93,7 +93,7 @@ description: |
   
     The result of the scan will be uploaded as artifacts within the repo however, if you have it enabled, you can have 
     this pushed to the GitHub Dependency graph instead by adding the following input parameters:
-    
+  
     ```
     enable-dependency-graph: true
     github-token: < secrets.GITHUB_TOKEN >
@@ -204,7 +204,7 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+    - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
     - name: Pull From S3
       if: inputs.grypeignore-from-s3 == 'true'
       shell: bash
@@ -272,7 +272,7 @@ runs:
 
     # Create an SBOM file for the local image and upload the results
     - name: Create SBOM (Push to Dependency Graph if enabled)
-      uses: anchore/sbom-action@e11c554f704a0b820cbf8c51673f6945e0731532
+      uses: anchore/sbom-action@7b36ad622f042cab6f59a75c2ac24ccb256e9b45 # v0.20.4
       with:
         format: spdx-json
         output-file: "${{ inputs.image-name }}-sbom.spdx.json"
@@ -282,7 +282,7 @@ runs:
 
     # Scan the SBOM
     - name: Scan SBOM
-      uses: anchore/scan-action@2c901ab7378897c01b8efaa2d0c9bf519cc64b9e
+      uses: anchore/scan-action@1638637db639e0ade3258b51db49a9a137574c3e # v6.5.1
       id: scan-sbom
       with:
         sbom: "${{ inputs.image-name }}-sbom.spdx.json"
@@ -294,7 +294,7 @@ runs:
 
     # Upload the SBOM scan results regardless of scan pass or failure
     - name: Upload SBOM Scan Results
-      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
       if: (success() || failure()) && (steps.scan-sbom.conclusion == 'success' || steps.scan-sbom.outcome == 'failure')
       with:
         name: "${{ inputs.image-name }}-sbom-results.json"
@@ -303,7 +303,7 @@ runs:
     # Scan the local image
     - name: Scan image
       id: image-scan
-      uses: anchore/scan-action@2c901ab7378897c01b8efaa2d0c9bf519cc64b9e
+      uses: anchore/scan-action@1638637db639e0ade3258b51db49a9a137574c3e # v6.5.1
       with:
         image: "${{ env.REPO }}/${{ inputs.image-name }}:${{ env.VERSION_TAG }}"
         output-format: 'json'
@@ -313,7 +313,7 @@ runs:
 
     # Upload the image scan results regardless of scan pass or failure
     - name: Upload Container Scan Results
-      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
       if: (success() || failure()) && (steps.image-scan.conclusion == 'success' || steps.image-scan.outcome == 'failure')
       with:
         name: "${{ inputs.image-name }}-scan-results.json"
@@ -322,13 +322,13 @@ runs:
     # Install cosign
     - name: Install Cosign
       if: inputs.publish-image == 'true'
-      uses: sigstore/cosign-installer@3454372f43399081ed03b604cb2d021dabca52bb
+      uses: sigstore/cosign-installer@d58896d6a1865668819e1d91763c7751a165e159 # v3.9.2
 
     # Login into registry
     ### USING DOCKERHUB ###
     - name: Login to Docker Registry
       if: inputs.publish-image == 'true' && env.IS_DOCKERHUB == 'true'
-      uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772
+      uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1 # v3.5.0
       with:
         username: ${{ inputs.repo-username }}
         password: ${{ inputs.repo-password }}
@@ -336,7 +336,7 @@ runs:
     ### USING NON-DOCKERHUB ###
     - name: Login to Container Registry
       if: inputs.publish-image == 'true' && env.IS_DOCKERHUB == 'false'
-      uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772
+      uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1 # v3.5.0
       with:
         registry: ${{ inputs.image-repo }}
         username: ${{ inputs.repo-username }}
