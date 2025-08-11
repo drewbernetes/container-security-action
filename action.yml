@@ -328,7 +328,7 @@ runs:
     ### USING DOCKERHUB ###
     - name: Login to Docker Registry
       if: inputs.publish-image == 'true' && env.IS_DOCKERHUB == 'true'
-      uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772
+      uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1
       with:
         username: ${{ inputs.repo-username }}
         password: ${{ inputs.repo-password }}
@@ -336,7 +336,7 @@ runs:
     ### USING NON-DOCKERHUB ###
     - name: Login to Container Registry
       if: inputs.publish-image == 'true' && env.IS_DOCKERHUB == 'false'
-      uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772
+      uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1
       with:
         registry: ${{ inputs.image-repo }}
         username: ${{ inputs.repo-username }}
