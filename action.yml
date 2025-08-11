@@ -322,7 +322,7 @@ runs:
     # Install cosign
     - name: Install Cosign
       if: inputs.publish-image == 'true'
-      uses: sigstore/cosign-installer@3454372f43399081ed03b604cb2d021dabca52bb
+      uses: sigstore/cosign-installer@d58896d6a1865668819e1d91763c7751a165e159
 
     # Login into registry
     ### USING DOCKERHUB ###
