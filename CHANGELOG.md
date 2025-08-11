@@ -5,18 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.3.0] - 2025-08-11
+## [0.2.1] - 2025-08-11
 
 ### :books: Documentation
 - Updating cahngelog and git cliff by @drew-viles
 
+### :broom: Chore
+- Updating the dependencies of the github actions that run for this repo. Fixing reference from var to secret for bot ID by @drew-viles in [#12](https://github.com/drewbernetes/container-security-action/pull/12)
+- Updating dependencies and adding automated changelog process by @drew-viles in [#11](https://github.com/drewbernetes/container-security-action/pull/11)
+
 ### :gear: Changed
-- Adding chanelog generator
 - Update dependabot.yml by @drew-viles in [#9](https://github.com/drewbernetes/container-security-action/pull/9)
 - Adding build arg support, pinning actions to sha and adding dependabot by @drew-viles in [#8](https://github.com/drewbernetes/container-security-action/pull/8)
-
-### :rocket: Added
-- Updating dependencies
 
 ## [0.2.0] - 2024-12-17
 
@@ -54,7 +54,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## New Contributors
 * @drew-viles made their first contribution
-[0.3.0]: https://github.com/drewbernetes/container-security-action/compare/v0.2.0..v0.3.0
+[0.2.1]: https://github.com/drewbernetes/container-security-action/compare/v0.2.0..v0.2.1
 [0.2.0]: https://github.com/drewbernetes/container-security-action/compare/v0.1.0..v0.2.0
 [0.1.0]: https://github.com/drewbernetes/container-security-action/compare/v0.0.4..v0.1.0
 [0.0.4]: https://github.com/drewbernetes/container-security-action/compare/v0.0.3..v0.0.4
