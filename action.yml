@@ -272,7 +272,7 @@ runs:
 
     # Create an SBOM file for the local image and upload the results
     - name: Create SBOM (Push to Dependency Graph if enabled)
-      uses: anchore/sbom-action@7b36ad622f042cab6f59a75c2ac24ccb256e9b45 # v0.20.4
+      uses: anchore/sbom-action@aa0e114b2e19480f157109b9922bda359bd98b90 # v0.20.8
       with:
         format: spdx-json
         output-file: "${{ inputs.image-name }}-sbom.spdx.json"
