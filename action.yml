@@ -282,7 +282,7 @@ runs:
 
     # Scan the SBOM
     - name: Scan SBOM
-      uses: anchore/scan-action@1638637db639e0ade3258b51db49a9a137574c3e # v6.5.1
+      uses: anchore/scan-action@568b89d27fc18c60e56937bff480c91c772cd993 # v7.1.0
       id: scan-sbom
       with:
         sbom: "${{ inputs.image-name }}-sbom.spdx.json"
@@ -303,7 +303,7 @@ runs:
     # Scan the local image
     - name: Scan image
       id: image-scan
-      uses: anchore/scan-action@1638637db639e0ade3258b51db49a9a137574c3e # v6.5.1
+      uses: anchore/scan-action@568b89d27fc18c60e56937bff480c91c772cd993 # v7.1.0
       with:
         image: "${{ env.REPO }}/${{ inputs.image-name }}:${{ env.VERSION_TAG }}"
         output-format: 'json'
