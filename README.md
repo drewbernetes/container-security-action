@@ -38,22 +38,22 @@ For example:
 steps:
     - name: Checkout Repo
       uses: actions/checkout@v4
-      - name: Build, Scan and Sign Image
-        uses: drewbernetes/container-security-action@v0.0.4
-        with:
-          image-repo: "drewviles"
-          repo-username: < secrets.DOCKER_USER >
-          repo-password: < secrets.DOCKER_PASSWORD >
-          image-name: "csa-demo"
-          image-tag: "1.0"
-          check-severity: "HIGH,CRITICAL"
-          grypeignore-file: "grypeignore"
-          add-latest-tag: "true"
-          publish-image: "true"
-          cosign-private-key: < secrets.COSIGN_KEY >
-          cosign-password: < secrets.COSIGN_PASSWORD >
-          cosign-tlog: false
-          dockerfile-path: .
+    - name: Build, Scan and Sign Image
+      uses: drewbernetes/container-security-action@main
+      with:
+        image-repo: "drewviles"
+        repo-username: ${{ secrets.DOCKER_USER }}
+        repo-password: ${{ secrets.DOCKER_PASSWORD }}
+        image-name: "csa-demo"
+        image-tag: "1.0"
+        check-severity: "HIGH,CRITICAL"
+        grypeignore-file: "grypeignore"
+        add-latest-tag: "true"
+        publish-image: "true"
+        cosign-private-key: ${{ secrets.COSIGN_KEY }}
+        cosign-password: ${{ secrets.COSIGN_PASSWORD }}
+        cosign-tlog: false
+        dockerfile-path: .
   ```
 
   If you wish to use the S3 approach, to prevent constantly pushing updated grypeignore files to the source repo, then you
@@ -62,24 +62,24 @@ can supply the following:
   ```yaml
 steps:
     - name: Build, Scan and Sign Image
-      uses: drewbernetes/container-security-action@v0.0.4
+      uses: drewbernetes/container-security-action@main
       with:
         image-repo: "your-registry.example.com/some-project"
-        repo-username: < secrets.REGISTRY_PUBLIC_USER >
-        repo-password: < secrets.REGISTRY_PUBLIC_PASSWORD >
+        repo-username: ${{ secrets.REGISTRY_PUBLIC_USER }}
+        repo-password: ${{ secrets.REGISTRY_PUBLIC_PASSWORD }}
         image-name: "csa-demo"
         image-tag: "1.0"
         check-severity: "MEDIUM,HIGH,CRITICAL"
         grypeignore-from-s3: true
         s3-endpoint: "https://s3.example.com"
-        s3-access-key: < secrets.S3_ACCESS_KEY >
-        s3-secret-key: < secrets.S3_SECRET_KEY >
+        s3-access-key: ${{ secrets.S3_ACCESS_KEY }}
+        s3-secret-key: ${{ secrets.S3_SECRET_KEY }}
         s3-bucket: "grypeignores"
         s3-path: "image-ignorefile"
         add-latest-tag: "false"
         publish-image: "true"
-        cosign-private-key: < secrets.COSIGN_KEY >
-        cosign-password: < secrets.COSIGN_PASSWORD >
+        cosign-private-key: ${{ secrets.COSIGN_KEY }}
+        cosign-password: ${{ secrets.COSIGN_PASSWORD }}
         cosign-tlog: true
         dockerfile-path: .
   ```
@@ -96,30 +96,73 @@ steps:
   these as a secret in GitHub.
   This can then be supplied via the `cosign-private-key` and `cosign-password` inputs.
 
+  ### OIDC Keyless Signing
+
+  You can also use OIDC-based keyless signing by setting `signing-mode: oidc`. This removes the need to manage
+  cosign keys. Your workflow must have `permissions: id-token: write` set.
+
+  ```yaml
+  permissions:
+    id-token: write
+    contents: read
+
+  steps:
+    - name: Build, Scan and Sign Image (OIDC)
+      uses: drewbernetes/container-security-action@main
+      with:
+        image-repo: "ghcr.io"
+        repo-username: ${{ github.actor }}
+        repo-password: ${{ secrets.GITHUB_TOKEN }}
+        image-name: "my-image"
+        image-tag: "1.0"
+        publish-image: "true"
+        signing-mode: "oidc"
+        cosign-tlog: true
+  ```
+
+  ## Multi-platform Builds
+
+  To build images for multiple platforms (e.g. amd64 and arm64), use the `platforms` input.
+  Multi-platform builds push during the build step, so `publish-image` must be `true`.
+
+  ```yaml
+  steps:
+    - name: Build Multi-platform Image
+      uses: drewbernetes/container-security-action@main
+      with:
+        image-repo: "ghcr.io"
+        repo-username: ${{ github.actor }}
+        repo-password: ${{ secrets.GITHUB_TOKEN }}
+        image-name: "my-image"
+        image-tag: "1.0"
+        publish-image: "true"
+        platforms: "linux/amd64,linux/arm64"
+        cosign-private-key: ${{ secrets.COSIGN_KEY }}
+        cosign-password: ${{ secrets.COSIGN_PASSWORD }}
+  ```
+
   ## Publishing Results
 
-  The result of the scan will be uploaded as artifacts within the repo however, if you have it enabled, you can have 
+  The result of the scan will be uploaded as artifacts within the repo however, if you have it enabled, you can have
   this pushed to the GitHub Dependency graph instead by adding the following input parameters:
-  
+
   ```
   enable-dependency-graph: true
-  github-token: < secrets.GITHUB_TOKEN >
+  github-token: ${{ secrets.GITHUB_TOKEN }}
   ```
 
   **Hardware token verification is currently not supported.**
   ## TODO (AKA nice to haves but may not come!):
 
   * Support dynamic key generation for Cosign.
-  * Support OIDC cosign signing.
-  * Support adding to Rekor (currently does not do this by default to prevent any private images being added when the user
-  may not want this to happen)
+  * Support adding to Rekor (transparency log upload is supported via `cosign-tlog` input)
 <!-- action-docs-description source="action.yml" -->
 
-<!-- action-docs-usage source="action.yml" project="<baski-action>" version="<v0.0.4>" -->
+<!-- action-docs-usage source="action.yml" project="drewbernetes/container-security-action" version="main" -->
 ## Usage
 
 ```yaml
-- uses: <baski-action>@<v0.0.4>
+- uses: drewbernetes/container-security-action@main
   with:
     image-repo:
     # The repo to push the image to. This should just be the base url, eg: my-repo or ghcr.io or, if using DockerHub, just the username you'd usually use for your repo.
@@ -130,13 +173,13 @@ steps:
     repo-username:
     # The username to log into the repo.
     #
-    # Required: true
+    # Required: false
     # Default: ""
 
     repo-password:
     # The password to log into the repo.
     #
-    # Required: true
+    # Required: false
     # Default: ""
 
     image-name:
@@ -157,16 +200,22 @@ steps:
     # Required: false
     # Default: false
 
-    cosign-private-key:
-    # A private key with which to sign the image using cosign.
+    build-args:
+    # Add additional build args via the --build-arg flag. this should be a comma separated list like 'SOME_KEY=SOME_VALUE,ANOTHER_KEY=ANOTHER_VALUE'
     #
-    # Required: true
+    # Required: false
+    # Default: ""
+
+    cosign-private-key:
+    # A private key with which to sign the image using cosign. Required when signing-mode is 'private-key'.
+    #
+    # Required: false
     # Default: ""
 
     cosign-password:
-    # The password to unlock the private key.
+    # The password to unlock the private key. Required when signing-mode is 'private-key'.
     #
-    # Required: true
+    # Required: false
     # Default: ""
 
     cosign-tlog:
@@ -174,6 +223,12 @@ steps:
     #
     # Required: false
     # Default: false
+
+    signing-mode:
+    # Signing mode: 'private-key' (requires cosign-private-key and cosign-password) or 'oidc' (keyless, requires id-token: write permission).
+    #
+    # Required: false
+    # Default: private-key
 
     publish-image:
     # If true the image will be published to the repo.
@@ -205,6 +260,12 @@ steps:
     # Required: false
     # Default: false
 
+    ignore-not-fixed:
+    # If true, CVEs that do not have a fixed version will be ignored
+    #
+    # Required: false
+    # Default: false
+
     enable-dependency-graph:
     # Will upload the SBOM to GitHub Dependency Graph - you must enable this and enable write permissions on your workflow for this to work.
     #
@@ -212,16 +273,16 @@ steps:
     # Default: false
 
     github-token:
-    # This can be a PAT or the GITHUB_TOKEN secret
+    # This can be a PAT or the GITHUB_TOKEN secret. Required when enable-dependency-graph is true.
     #
-    # Required: true
+    # Required: false
     # Default: ""
 
     s3-endpoint:
     # If the endpoint isn't a standard AWS one, pass it in here.
     #
     # Required: false
-    # Default: https://some-s3-endpoint.com
+    # Default: ""
 
     s3-region:
     # The AWS Region.
@@ -258,8 +319,14 @@ steps:
     #
     # Required: false
     # Default: .
+
+    platforms:
+    # Comma-separated list of platforms for multi-platform builds (e.g. 'linux/amd64,linux/arm64'). When set, publish-image must be true as multi-platform builds push during build.
+    #
+    # Required: false
+    # Default: ""
 ```
-<!-- action-docs-usage source="action.yml" project="<baski-action>" version="<v0.0.4>" -->
+<!-- action-docs-usage source="action.yml" project="drewbernetes/container-security-action" version="main" -->
 
 <!-- action-docs-inputs source="action.yml" -->
 ## Inputs
@@ -267,26 +334,41 @@ steps:
 | name | description | required | default |
 | --- | --- | --- | --- |
 | `image-repo` | <p>The repo to push the image to. This should just be the base url, eg: my-repo or ghcr.io or, if using DockerHub, just the username you'd usually use for your repo.</p> | `true` | `""` |
-| `repo-username` | <p>The username to log into the repo.</p> | `true` | `""` |
-| `repo-password` | <p>The password to log into the repo.</p> | `true` | `""` |
+| `repo-username` | <p>The username to log into the repo.</p> | `false` | `""` |
+| `repo-password` | <p>The password to log into the repo.</p> | `false` | `""` |
 | `image-name` | <p>The name of the image to build.</p> | `true` | `""` |
 | `image-tag` | <p>The tag to build the image with - provide a matrix to build against multiple tags as each will need to be SBOM'd, scanned and signed independently.</p> | `true` | `""` |
 | `add-latest-tag` | <p>Adds the latest tag to the build.</p> | `false` | `false` |
-| `cosign-private-key` | <p>A private key with which to sign the image using cosign.</p> | `true` | `""` |
-| `cosign-password` | <p>The password to unlock the private key.</p> | `true` | `""` |
+| `build-args` | <p>Add additional build args via the --build-arg flag. this should be a comma separated list like 'SOME_KEY=SOME_VALUE,ANOTHER_KEY=ANOTHER_VALUE'</p> | `false` | `""` |
+| `cosign-private-key` | <p>A private key with which to sign the image using cosign. Required when signing-mode is 'private-key'.</p> | `false` | `""` |
+| `cosign-password` | <p>The password to unlock the private key. Required when signing-mode is 'private-key'.</p> | `false` | `""` |
 | `cosign-tlog` | <p>Set to true to upload to tlog for transparency.</p> | `false` | `false` |
+| `signing-mode` | <p>Signing mode: 'private-key' (requires cosign-private-key and cosign-password) or 'oidc' (keyless, requires id-token: write permission).</p> | `false` | `private-key` |
 | `publish-image` | <p>If true the image will be published to the repo.</p> | `false` | `false` |
 | `check-severity` | <p>A comma delimited (uppercase) list of severities to check for. If found the pipeline will fail. Support values: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL</p> | `false` | `high` |
 | `severity-fail-on-detection` | <p>Whether or not to fail the build should a 'check-severity' level vulnerability be found.</p> | `false` | `true` |
 | `grypeignore-file` | <p>Supply a Grype ignore file to ignore specific CVEs and prevent a pipeline failure.</p> | `false` | `.grype.yaml` |
 | `grypeignore-from-s3` | <p>If disabled, the Grype ignore can be supplied via the repo itself but actions/checkout@v4 must be used before calling this action.</p> | `false` | `false` |
+| `ignore-not-fixed` | <p>If true, CVEs that do not have a fixed version will be ignored</p> | `false` | `false` |
 | `enable-dependency-graph` | <p>Will upload the SBOM to GitHub Dependency Graph - you must enable this and enable write permissions on your workflow for this to work.</p> | `false` | `false` |
-| `github-token` | <p>This can be a PAT or the GITHUB_TOKEN secret</p> | `true` | `""` |
-| `s3-endpoint` | <p>If the endpoint isn't a standard AWS one, pass it in here.</p> | `false` | `https://some-s3-endpoint.com` |
+| `github-token` | <p>This can be a PAT or the GITHUB_TOKEN secret. Required when enable-dependency-graph is true.</p> | `false` | `""` |
+| `s3-endpoint` | <p>If the endpoint isn't a standard AWS one, pass it in here.</p> | `false` | `""` |
 | `s3-region` | <p>The AWS Region.</p> | `false` | `us-east-1` |
 | `s3-access-key` | <p>The S3 access key.</p> | `false` | `""` |
 | `s3-secret-key` | <p>The S3 secret key.</p> | `false` | `""` |
 | `s3-bucket` | <p>The S3 bucket in which the grype ignore file is stored.</p> | `false` | `grypeignores` |
 | `s3-path` | <p>The path in the s3 bucket to the grype ignore file.</p> | `false` | `.grype.yaml` |
 | `dockerfile-path` | <p>Path to the Dockerfile (default {context}/Dockerfile).</p> | `false` | `.` |
+| `platforms` | <p>Comma-separated list of platforms for multi-platform builds (e.g. 'linux/amd64,linux/arm64'). When set, publish-image must be true as multi-platform builds push during build.</p> | `false` | `""` |
 <!-- action-docs-inputs source="action.yml" -->
+
+<!-- action-docs-outputs source="action.yml" -->
+## Outputs
+
+| name | description |
+| --- | --- |
+| `image-digest` | <p>SHA256 digest of the built/pushed image</p> |
+| `sbom-path` | <p>Path to the generated SBOM file</p> |
+| `scan-passed` | <p>'true' if the vulnerability scan passed, 'false' otherwise</p> |
+| `image-ref` | <p>Full image reference (registry/name:tag)</p> |
+<!-- action-docs-outputs source="action.yml" -->
