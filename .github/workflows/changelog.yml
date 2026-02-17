@@ -37,7 +37,7 @@ jobs:
 
       - name: Create or Update Changelog File
         id: create-changelog
-        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # main
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
         with:
           github-token: ${{ steps.generate-token.outputs.token }}
           script: |

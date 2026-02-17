@@ -1,111 +1,10 @@
 name: 'Build, Scan and Sign image using Grype and Cosign'
-description: |
-  Generally speaking when scanning a container you should generate an SBOM and then scan the resulting
-  image to ensure you know exactly what vulnerabilities exist within the image and any packages used within it.
-  
-  This action enables that process. On top of that, it signs the image
-  with [Sigstore Cosign](https://github.com/sigstore/cosign) so that you can validate the image and be confident the one
-  you're using is the one you built, as you built it.
-  
-  Whilst nothing can catch everything, this gives a decent view of what is going on within an image.
-  
-  ## Why?
-  
-  Some container registries provide scanning and signing support as part and parcel of their service. However, some do
-  not. This action provides consistency and enables the scanning and signing of your containers during the build process,
-  not after the push.
-  
-  ## Scanning with Grype
-  
-  Grype is used to scan the images and
-  a `[.grype.yaml](https://github.com/anchore/grype#specifying-matches-to-ignore)` file
-  can be supplied to ignore certain CVEs if desired.
-  
-  If you wish to use a `.grype.yaml` file, then you can store it in the repo that calls this action.
-  Make sure you run `actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683` before calling this action and pass the `grypeignore-file` input parameter.
-  It will automatically be used if the S3 option isn't explicitly enabled.
-
-  For example:
-  
-    ```yaml
-  steps:
-      - name: Checkout Repo
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        - name: Build, Scan and Sign Image
-          uses: drewbernetes/container-security-action@v0.0.4
-          with:
-            image-repo: "drewviles"
-            repo-username: < secrets.DOCKER_USER >
-            repo-password: < secrets.DOCKER_PASSWORD >
-            image-name: "csa-demo"
-            image-tag: "1.0"
-            check-severity: "HIGH,CRITICAL"
-            grypeignore-file: "grypeignore"
-            add-latest-tag: "true"
-            publish-image: "true"
-            cosign-private-key: < secrets.COSIGN_KEY >
-            cosign-password: < secrets.COSIGN_PASSWORD >
-            cosign-tlog: false
-            dockerfile-path: .
-    ```
-  
-    If you wish to use the S3 approach, to prevent constantly pushing updated grypeignore files to the source repo, then you
-  can supply the following:
-  
-    ```yaml
-  steps:
-      - name: Build, Scan and Sign Image
-        uses: drewbernetes/container-security-action@v0.0.4
-        with:
-          image-repo: "your-registry.example.com/some-project"
-          repo-username: < secrets.REGISTRY_PUBLIC_USER >
-          repo-password: < secrets.REGISTRY_PUBLIC_PASSWORD >
-          image-name: "csa-demo"
-          image-tag: "1.0"
-          check-severity: "MEDIUM,HIGH,CRITICAL"
-          grypeignore-from-s3: true
-          s3-endpoint: "https://s3.example.com"
-          s3-access-key: < secrets.S3_ACCESS_KEY >
-          s3-secret-key: < secrets.S3_SECRET_KEY >
-          s3-bucket: "grypeignores"
-          s3-path: "image-ignorefile"
-          add-latest-tag: "false"
-          publish-image: "true"
-          cosign-private-key: < secrets.COSIGN_KEY >
-          cosign-password: < secrets.COSIGN_PASSWORD >
-          cosign-tlog: true
-          dockerfile-path: .
-    ```
-  
-    If you also supply the `grypeignore-file` input when using the above, then this will be used as the resulting filename
-    when the grypeignore file is pulled from s3. It won't use any file in the source repo as S3 overrides local grypeignore
-    files.
-  
-    ## Signing images with Cosign
-  
-    The Cosign image signing works by using the standard process used by Cosign.
-    You will need to generate
-    the [Cosign keys as described in their documentation](https://docs.sigstore.dev/key_management/overview/) and store
-    these as a secret in GitHub.
-    This can then be supplied via the `cosign-private-key` and `cosign-password` inputs.
-  
-    ## Publishing Results
-  
-    The result of the scan will be uploaded as artifacts within the repo however, if you have it enabled, you can have 
-    this pushed to the GitHub Dependency graph instead by adding the following input parameters:
-  
-    ```
-    enable-dependency-graph: true
-    github-token: < secrets.GITHUB_TOKEN >
-    ```
-  
-    **Hardware token verification is currently not supported.**
-    ## TODO (AKA nice to haves but may not come!):
-  
-    * Support dynamic key generation for Cosign.
-    * Support OIDC cosign signing.
-    * Support adding to Rekor (currently does not do this by default to prevent any private images being added when the user
-    may not want this to happen)
+description: >
+  Build, scan (SBOM + image via Grype), and sign (Cosign) container images.
+  Generates an SBOM, scans for vulnerabilities, and optionally signs and pushes
+  the image. Supports multi-platform builds, S3-hosted Grype ignore files,
+  OIDC keyless signing, and GitHub Dependency Graph integration.
+  See the README for usage examples and full documentation.
 
 branding:
   icon: layers
@@ -116,10 +15,12 @@ inputs:
     required: true
   repo-username:
     description: "The username to log into the repo."
-    required: true
+    required: false
+    default: ""
   repo-password:
     description: "The password to log into the repo."
-    required: true
+    required: false
+    default: ""
   image-name:
     description: "The name of the image to build."
     required: true
@@ -132,16 +33,24 @@ inputs:
     default: "false"
   build-args:
     description: "Add additional build args via the --build-arg flag. this should be a comma separated list like 'SOME_KEY=SOME_VALUE,ANOTHER_KEY=ANOTHER_VALUE'"
+    required: false
+    default: ""
   cosign-private-key:
-    description: "A private key with which to sign the image using cosign."
-    required: true
+    description: "A private key with which to sign the image using cosign. Required when signing-mode is 'private-key'."
+    required: false
+    default: ""
   cosign-password:
-    description: "The password to unlock the private key."
-    required: true
+    description: "The password to unlock the private key. Required when signing-mode is 'private-key'."
+    required: false
+    default: ""
   cosign-tlog:
     description: "Set to true to upload to tlog for transparency."
     required: false
     default: 'false'
+  signing-mode:
+    description: "Signing mode: 'private-key' (requires cosign-private-key and cosign-password) or 'oidc' (keyless, requires id-token: write permission)."
+    required: false
+    default: "private-key"
   publish-image:
     description: "If true the image will be published to the repo."
     default: 'false'
@@ -149,7 +58,7 @@ inputs:
   check-severity:
     description: "A comma delimited (uppercase) list of severities to check for. If found the pipeline will fail. Support values: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"
     required: false
-    default: high
+    default: HIGH
   severity-fail-on-detection:
     description: "Whether or not to fail the build should a 'check-severity' level vulnerability be found."
     required: false
@@ -170,12 +79,13 @@ inputs:
     required: false
     default: "false"
   github-token:
-    description: "This can be a PAT or the GITHUB_TOKEN secret"
-    required: true
+    description: "This can be a PAT or the GITHUB_TOKEN secret. Required when enable-dependency-graph is true."
+    required: false
+    default: ""
   s3-endpoint:
     description: "If the endpoint isn't a standard AWS one, pass it in here."
     required: false
-    default: "https://some-s3-endpoint.com"
+    default: ""
   s3-region:
     description: "The AWS Region."
     required: false
@@ -200,11 +110,63 @@ inputs:
     description: "Path to the Dockerfile (default {context}/Dockerfile)."
     required: false
     default: "."
+  skip-image-scan:
+    description: "If true, skip the container image scan (SBOM scan still runs). Useful for faster builds when SBOM scan provides sufficient coverage."
+    required: false
+    default: "false"
+  platforms:
+    description: "Comma-separated list of platforms for multi-platform builds (e.g. 'linux/amd64,linux/arm64'). When set, publish-image must be true as multi-platform builds push during build."
+    required: false
+    default: ""
+
+outputs:
+  image-digest:
+    description: "SHA256 digest of the built/pushed image"
+    value: ${{ steps.set-outputs.outputs.image-digest }}
+  sbom-path:
+    description: "Path to the generated SBOM file"
+    value: ${{ steps.set-outputs.outputs.sbom-path }}
+  scan-passed:
+    description: "'true' if the vulnerability scan passed, 'false' otherwise"
+    value: ${{ steps.set-outputs.outputs.scan-passed }}
+  image-ref:
+    description: "Full image reference (registry/name:tag)"
+    value: ${{ steps.set-outputs.outputs.image-ref }}
+  cve-list:
+    description: "JSON array of CVE objects with id, severity, package, version, fixed_version"
+    value: ${{ steps.parse-scan-results.outputs.cve-list }}
+  cve-count:
+    description: "Integer count of CVEs at or above the configured severity threshold"
+    value: ${{ steps.parse-scan-results.outputs.cve-count }}
+  cve-summary:
+    description: "Human-readable summary of CVE findings"
+    value: ${{ steps.parse-scan-results.outputs.cve-summary }}
 
 runs:
   using: "composite"
   steps:
     - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+
+    - name: Validate Inputs
+      shell: bash
+      env:
+        INPUT_CHECK_SEVERITY: ${{ inputs.check-severity }}
+        INPUT_SIGNING_MODE: ${{ inputs.signing-mode }}
+        INPUT_COSIGN_PRIVATE_KEY: ${{ inputs.cosign-private-key }}
+        INPUT_COSIGN_PASSWORD: ${{ inputs.cosign-password }}
+        INPUT_PUBLISH_IMAGE: ${{ inputs.publish-image }}
+        INPUT_REPO_USERNAME: ${{ inputs.repo-username }}
+        INPUT_REPO_PASSWORD: ${{ inputs.repo-password }}
+        INPUT_GRYPEIGNORE_FROM_S3: ${{ inputs.grypeignore-from-s3 }}
+        INPUT_S3_ACCESS_KEY: ${{ inputs.s3-access-key }}
+        INPUT_S3_SECRET_KEY: ${{ inputs.s3-secret-key }}
+        INPUT_S3_BUCKET: ${{ inputs.s3-bucket }}
+        INPUT_ENABLE_DEPENDENCY_GRAPH: ${{ inputs.enable-dependency-graph }}
+        INPUT_GITHUB_TOKEN: ${{ inputs.github-token }}
+        INPUT_PLATFORMS: ${{ inputs.platforms }}
+        INPUT_DOCKERFILE_PATH: ${{ inputs.dockerfile-path }}
+      run: bash "${GITHUB_ACTION_PATH}/scripts/validate-inputs.sh"
+
     - name: Pull From S3
       if: inputs.grypeignore-from-s3 == 'true'
       shell: bash
@@ -212,71 +174,83 @@ runs:
         AWS_ACCESS_KEY_ID: ${{ inputs.s3-access-key }}
         AWS_SECRET_ACCESS_KEY: ${{ inputs.s3-secret-key }}
         AWS_DEFAULT_REGION: ${{ inputs.s3-region }}
+        INPUT_S3_ENDPOINT: ${{ inputs.s3-endpoint }}
+        INPUT_S3_BUCKET: ${{ inputs.s3-bucket }}
+        INPUT_S3_PATH: ${{ inputs.s3-path }}
+        INPUT_GRYPEIGNORE_FILE: ${{ inputs.grypeignore-file }}
       run: |
-        aws --endpoint-url=${{ inputs.s3-endpoint }} s3 cp s3://${{ inputs.s3-bucket }}/${{ inputs.s3-path }} ${{ inputs.grypeignore-file }}
-        if [[ "${{ inputs.grypeignore-file }}" != ".grype.yaml" ]]; then
-          cp ${{ inputs.grypeignore-file }} .grype.yaml
+        ENDPOINT_FLAG=""
+        if [[ -n "${INPUT_S3_ENDPOINT}" ]]; then
+          ENDPOINT_FLAG="--endpoint-url=${INPUT_S3_ENDPOINT}"
+        fi
+        if ! aws ${ENDPOINT_FLAG} s3 cp "s3://${INPUT_S3_BUCKET}/${INPUT_S3_PATH}" "${INPUT_GRYPEIGNORE_FILE}"; then
+          echo "::error::Failed to pull grypeignore file from S3"
+          exit 1
+        fi
+        if [[ "${INPUT_GRYPEIGNORE_FILE}" != ".grype.yaml" ]]; then
+          cp "${INPUT_GRYPEIGNORE_FILE}" .grype.yaml
         fi
 
-    - name: Determine Registry and Tags
+    - name: Detect Registry and Tags
       shell: bash
-      run: |
-        # Determine image registry
-        IS_DOCKERHUB="true"
-        REPO="${{ inputs.image-repo }}"
-        
-        if echo "${{ inputs.image-repo }}" | grep -E -q '\.'; then
-          IS_DOCKERHUB="false"
-        fi
-        
-        if [ "${{ inputs.image-repo }}" == "ghcr.io" ]; then
-          REPO="${{ inputs.image-repo }}/${{ inputs.repo-username }}"
-        fi
-        
-        echo "IS_DOCKERHUB=${IS_DOCKERHUB}" >> "$GITHUB_ENV"
-        echo "REPO=${REPO}" >> "$GITHUB_ENV"
-        
-        # Determine tags
-        VERSION_TAG="${{ inputs.image-tag }}"
-        echo "VERSION_TAG=${VERSION_TAG}" >> "$GITHUB_ENV"
-        
-        # Create a tags array
-        TAGS=("${VERSION_TAG}")
-        
-        # Check if 'latest' tag is required
-        if [[ "${{ inputs.add-latest-tag }}" == "true" ]]; then
-          LATEST_TAG="latest"
-          # Add 'latest' tag to the TAGS array
-          TAGS+=("${LATEST_TAG}")
-        
-          echo "LATEST_TAG=${LATEST_TAG}" >> "$GITHUB_ENV"
-        fi
-        
-        echo "TAGS=${TAGS}" >> "$GITHUB_ENV"
+      env:
+        INPUT_IMAGE_REPO: ${{ inputs.image-repo }}
+        INPUT_IMAGE_NAME: ${{ inputs.image-name }}
+        INPUT_IMAGE_TAG: ${{ inputs.image-tag }}
+        INPUT_ADD_LATEST_TAG: ${{ inputs.add-latest-tag }}
+        INPUT_REPO_USERNAME: ${{ inputs.repo-username }}
+      run: bash "${GITHUB_ACTION_PATH}/scripts/detect-registry.sh"
 
-    - name: Build Docker Image and Tag
+    # Install cosign before build (multi-platform builds push during build and need signing after)
+    - name: Install Cosign
+      if: inputs.publish-image == 'true'
+      uses: sigstore/cosign-installer@d58896d6a1865668819e1d91763c7751a165e159 # v3.9.2
+
+    # Login into registry before build (multi-platform builds push during build)
+    ### USING DOCKERHUB ###
+    - name: Login to Docker Registry
+      if: inputs.publish-image == 'true' && env.IS_DOCKERHUB == 'true'
+      uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1 # v3.5.0
+      with:
+        username: ${{ inputs.repo-username }}
+        password: ${{ inputs.repo-password }}
+
+    ### USING NON-DOCKERHUB ###
+    - name: Login to Container Registry
+      if: inputs.publish-image == 'true' && env.IS_DOCKERHUB == 'false'
+      uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1 # v3.5.0
+      with:
+        registry: ${{ inputs.image-repo }}
+        username: ${{ inputs.repo-username }}
+        password: ${{ inputs.repo-password }}
+
+    - name: Build Docker Image
       shell: bash
-      run: |
-        # Parse build arguments if provided
-        BUILD_ARGS=""
-        if [[ -n "${{ inputs.build-args }}" ]]; then
-          IFS=',' read -ra ARG_ARRAY <<< "${{ inputs.build-args }}"
-          for arg in "${ARG_ARRAY[@]}"; do
-            BUILD_ARGS="${BUILD_ARGS} --build-arg ${arg}"
-          done
-        fi
-        
-        for tag in ${TAGS[@]}; do
-          docker buildx build ${BUILD_ARGS} -t ${{ env.REPO }}/${{ inputs.image-name }}:${tag} -f "${{inputs.dockerfile-path}}/Dockerfile" .
-        done
+      env:
+        INPUT_DOCKERFILE_PATH: ${{ inputs.dockerfile-path }}
+        INPUT_BUILD_ARGS: ${{ inputs.build-args }}
+        INPUT_PLATFORMS: ${{ inputs.platforms }}
+      run: bash "${GITHUB_ACTION_PATH}/scripts/build-image.sh"
 
     # Create an SBOM file for the local image and upload the results
     - name: Create SBOM (Push to Dependency Graph if enabled)
+      if: env.MULTIPLATFORM_BUILD != 'true'
       uses: anchore/sbom-action@8e94d75ddd33f69f691467e42275782e4bfefe84 # v0.20.9
       with:
         format: spdx-json
         output-file: "${{ inputs.image-name }}-sbom.spdx.json"
-        image: "${{ env.REPO }}/${{ inputs.image-name }}:${{ env.VERSION_TAG }}"
+        image: "${{ env.IMAGE_REF }}:${{ env.VERSION_TAG }}"
+        dependency-snapshot: ${{ inputs.enable-dependency-graph }}
+        github-token: ${{ inputs.github-token }}
+
+    # Create SBOM for multi-platform builds (from Dockerfile/context instead of local image)
+    - name: Create SBOM from Dockerfile (Multi-platform)
+      if: env.MULTIPLATFORM_BUILD == 'true'
+      uses: anchore/sbom-action@7b36ad622f042cab6f59a75c2ac24ccb256e9b45 # v0.20.4
+      with:
+        format: spdx-json
+        output-file: "${{ inputs.image-name }}-sbom.spdx.json"
+        path: "${{ inputs.dockerfile-path }}"
         dependency-snapshot: ${{ inputs.enable-dependency-graph }}
         github-token: ${{ inputs.github-token }}
 
@@ -300,66 +274,75 @@ runs:
         name: "${{ inputs.image-name }}-sbom-results.json"
         path: "${{ steps.scan-sbom.outputs.json }}"
 
-    # Scan the local image
+    # Scan the local image (only for single-platform builds, skippable)
     - name: Scan image
       id: image-scan
+      if: env.MULTIPLATFORM_BUILD != 'true' && inputs.skip-image-scan != 'true'
       uses: anchore/scan-action@568b89d27fc18c60e56937bff480c91c772cd993 # v7.1.0
       with:
-        image: "${{ env.REPO }}/${{ inputs.image-name }}:${{ env.VERSION_TAG }}"
+        image: "${{ env.IMAGE_REF }}:${{ env.VERSION_TAG }}"
         output-format: 'json'
         fail-build: ${{ inputs.severity-fail-on-detection }}
         severity-cutoff: ${{ inputs.check-severity }}
+        cache-db: true
         only-fixed: ${{ inputs.ignore-not-fixed }}
 
     # Upload the image scan results regardless of scan pass or failure
     - name: Upload Container Scan Results
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-      if: (success() || failure()) && (steps.image-scan.conclusion == 'success' || steps.image-scan.outcome == 'failure')
+      if: env.MULTIPLATFORM_BUILD != 'true' && inputs.skip-image-scan != 'true' && (success() || failure()) && (steps.image-scan.conclusion == 'success' || steps.image-scan.outcome == 'failure')
       with:
         name: "${{ inputs.image-name }}-scan-results.json"
         path: "${{ steps.image-scan.outputs.json }}"
 
-    # Install cosign
-    - name: Install Cosign
-      if: inputs.publish-image == 'true'
-      uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4.0.0
+    # Parse scan results to extract CVE data
+    - name: Parse Scan Results
+      id: parse-scan-results
+      if: always()
+      shell: bash
+      env:
+        INPUT_CHECK_SEVERITY: ${{ inputs.check-severity }}
+        SBOM_SCAN_RESULTS: ${{ steps.scan-sbom.outputs.json }}
+        IMAGE_SCAN_RESULTS: ${{ steps.image-scan.outputs.json }}
+      run: bash "${GITHUB_ACTION_PATH}/scripts/parse-scan-results.sh"
 
-    # Login into registry
-    ### USING DOCKERHUB ###
-    - name: Login to Docker Registry
-      if: inputs.publish-image == 'true' && env.IS_DOCKERHUB == 'true'
-      uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
-      with:
-        username: ${{ inputs.repo-username }}
-        password: ${{ inputs.repo-password }}
-
-    ### USING NON-DOCKERHUB ###
-    - name: Login to Container Registry
-      if: inputs.publish-image == 'true' && env.IS_DOCKERHUB == 'false'
-      uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
-      with:
-        registry: ${{ inputs.image-repo }}
-        username: ${{ inputs.repo-username }}
-        password: ${{ inputs.repo-password }}
-
+    # Push Docker Image (only for single-platform builds; multi-platform already pushed during build)
     - name: Push Docker Image
-      if: inputs.publish-image == 'true'
+      if: inputs.publish-image == 'true' && env.MULTIPLATFORM_BUILD != 'true'
       shell: bash
       run: |
-        for tag in ${TAGS[@]}; do
-          docker push ${{ env.REPO }}/${{ inputs.image-name }}:${tag} 
+        for tag in ${TAGS}; do
+          docker push "${IMAGE_REF}:${tag}"
         done
 
     - name: Sign Image
       if: inputs.publish-image == 'true'
       shell: bash
-      run: |
-        for tag in ${TAGS[@]}; do
-          DIGEST=$(docker image ls --digests --format "{{.Tag}}@{{.Digest}}" ${{ env.REPO }}/${{ inputs.image-name }})
-        
-          cosign sign --tlog-upload=${{inputs.cosign-tlog}} --yes --key env://COSIGN_PRIVATE_KEY ${{ env.REPO }}/${{ inputs.image-name }}:${DIGEST}
-        done
       env:
-        COSIGN_PRIVATE_KEY: ${{inputs.cosign-private-key}}
-        COSIGN_PASSWORD: ${{inputs.cosign-password}}
-        COSIGN_EXPERIMENTAL: "true"
+        INPUT_SIGNING_MODE: ${{ inputs.signing-mode }}
+        INPUT_COSIGN_TLOG: ${{ inputs.cosign-tlog }}
+        COSIGN_PRIVATE_KEY: ${{ inputs.cosign-private-key }}
+        COSIGN_PASSWORD: ${{ inputs.cosign-password }}
+      run: bash "${GITHUB_ACTION_PATH}/scripts/sign-image.sh"
+
+    - name: Set Outputs
+      id: set-outputs
+      if: always()
+      shell: bash
+      run: |
+        # Image digest - prefer FINAL_IMAGE_DIGEST (from signing), fall back to IMAGE_DIGEST (from build)
+        DIGEST="${FINAL_IMAGE_DIGEST:-${IMAGE_DIGEST:-}}"
+        echo "image-digest=${DIGEST}" >> "${GITHUB_OUTPUT}"
+
+        # SBOM path
+        echo "sbom-path=${{ inputs.image-name }}-sbom.spdx.json" >> "${GITHUB_OUTPUT}"
+
+        # Scan result
+        SCAN_PASSED="true"
+        if [[ "${{ steps.scan-sbom.outcome }}" == "failure" ]] || [[ "${{ steps.image-scan.outcome }}" == "failure" ]]; then
+          SCAN_PASSED="false"
+        fi
+        echo "scan-passed=${SCAN_PASSED}" >> "${GITHUB_OUTPUT}"
+
+        # Image reference
+        echo "image-ref=${IMAGE_REF:-}:${VERSION_TAG:-}" >> "${GITHUB_OUTPUT}"
