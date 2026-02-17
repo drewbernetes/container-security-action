@@ -7,11 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.2.3] - 2026-02-17
 
+### :gear: Changed
+- Automated changelog update by @nscale-actions[bot]
+
 ### :package: Build
+- Bump anchore/scan-action from 6.5.1 to 7.1.0 by @dependabot[bot] in [#29](https://github.com/drewbernetes/container-security-action/pull/29)
 - Bump anchore/sbom-action from 0.20.4 to 0.20.9 by @dependabot[bot] in [#30](https://github.com/drewbernetes/container-security-action/pull/30)
 
 ## New Contributors
-* @dependabot[bot] made their first contribution in [#30](https://github.com/drewbernetes/container-security-action/pull/30)
+* @dependabot[bot] made their first contribution in [#29](https://github.com/drewbernetes/container-security-action/pull/29)
 ## [0.2.2] - 2025-08-11
 
 ### :books: Documentation
