@@ -7,25 +7,21 @@
 <!-- action-docs-description source="action.yml" -->
 ## Description
 
-Generally speaking when scanning a container you should generate an SBOM and then scan the resulting
-image to ensure you know exactly what vulnerabilities exist within the image and any packages used within it.
+Build, scan (SBOM + image via Grype), and sign (Cosign) container images.
+Generates an SBOM, scans for vulnerabilities, and optionally signs and pushes
+the image. Supports multi-platform builds, S3-hosted Grype ignore files,
+OIDC keyless signing, and GitHub Dependency Graph integration.
 
-This action enables that process. On top of that, it signs the image
-with [Sigstore Cosign](https://github.com/sigstore/cosign) so that you can validate the image and be confident the one
-you're using is the one you built, as you built it.
-
-Whilst nothing can catch everything, this gives a decent view of what is going on within an image.
-
-## Why?
+### Why?
 
 Some container registries provide scanning and signing support as part and parcel of their service. However, some do
 not. This action provides consistency and enables the scanning and signing of your containers during the build process,
 not after the push.
 
-## Scanning with Grype
+### Scanning with Grype
 
 Grype is used to scan the images and
-a `[.grype.yaml](https://github.com/anchore/grype#specifying-matches-to-ignore)` file
+a [.grype.yaml](https://github.com/anchore/grype#specifying-matches-to-ignore) file
 can be supplied to ignore certain CVEs if desired.
 
 If you wish to use a `.grype.yaml` file, then you can store it in the repo that calls this action.
@@ -34,7 +30,7 @@ It will automatically be used if the S3 option isn't explicitly enabled.
 
 For example:
 
-  ```yaml
+```yaml
 steps:
     - name: Checkout Repo
       uses: actions/checkout@v4
@@ -54,12 +50,12 @@ steps:
         cosign-password: ${{ secrets.COSIGN_PASSWORD }}
         cosign-tlog: false
         dockerfile-path: .
-  ```
+```
 
-  If you wish to use the S3 approach, to prevent constantly pushing updated grypeignore files to the source repo, then you
+If you wish to use the S3 approach, to prevent constantly pushing updated grypeignore files to the source repo, then you
 can supply the following:
 
-  ```yaml
+```yaml
 steps:
     - name: Build, Scan and Sign Image
       uses: drewbernetes/container-security-action@main
@@ -82,80 +78,150 @@ steps:
         cosign-password: ${{ secrets.COSIGN_PASSWORD }}
         cosign-tlog: true
         dockerfile-path: .
-  ```
+```
 
-  If you also supply the `grypeignore-file` input when using the above, then this will be used as the resulting filename
-  when the grypeignore file is pulled from s3. It won't use any file in the source repo as S3 overrides local grypeignore
-  files.
+If you also supply the `grypeignore-file` input when using the above, then this will be used as the resulting filename
+when the grypeignore file is pulled from s3. It won't use any file in the source repo as S3 overrides local grypeignore
+files.
 
-  ## Signing images with Cosign
+### Signing images with Cosign
 
-  The Cosign image signing works by using the standard process used by Cosign.
-  You will need to generate
-  the [Cosign keys as described in their documentation](https://docs.sigstore.dev/key_management/overview/) and store
-  these as a secret in GitHub.
-  This can then be supplied via the `cosign-private-key` and `cosign-password` inputs.
+The Cosign image signing works by using the standard process used by Cosign.
+You will need to generate
+the [Cosign keys as described in their documentation](https://docs.sigstore.dev/key_management/overview/) and store
+these as a secret in GitHub.
+This can then be supplied via the `cosign-private-key` and `cosign-password` inputs.
 
-  ### OIDC Keyless Signing
+#### OIDC Keyless Signing
 
-  You can also use OIDC-based keyless signing by setting `signing-mode: oidc`. This removes the need to manage
-  cosign keys. Your workflow must have `permissions: id-token: write` set.
+You can also use OIDC-based keyless signing by setting `signing-mode: oidc`. This removes the need to manage
+cosign keys. Your workflow must have `permissions: id-token: write` set.
 
-  ```yaml
-  permissions:
-    id-token: write
-    contents: read
+```yaml
+permissions:
+  id-token: write
+  contents: read
 
-  steps:
-    - name: Build, Scan and Sign Image (OIDC)
-      uses: drewbernetes/container-security-action@main
-      with:
-        image-repo: "ghcr.io"
-        repo-username: ${{ github.actor }}
-        repo-password: ${{ secrets.GITHUB_TOKEN }}
-        image-name: "my-image"
-        image-tag: "1.0"
-        publish-image: "true"
-        signing-mode: "oidc"
-        cosign-tlog: true
-  ```
+steps:
+  - name: Build, Scan and Sign Image (OIDC)
+    uses: drewbernetes/container-security-action@main
+    with:
+      image-repo: "ghcr.io"
+      repo-username: ${{ github.actor }}
+      repo-password: ${{ secrets.GITHUB_TOKEN }}
+      image-name: "my-image"
+      image-tag: "1.0"
+      publish-image: "true"
+      signing-mode: "oidc"
+      cosign-tlog: true
+```
 
-  ## Multi-platform Builds
+### Multi-platform Builds
 
-  To build images for multiple platforms (e.g. amd64 and arm64), use the `platforms` input.
-  Multi-platform builds push during the build step, so `publish-image` must be `true`.
+To build images for multiple platforms (e.g. amd64 and arm64), use the `platforms` input.
+Multi-platform builds push during the build step, so `publish-image` must be `true`.
 
-  ```yaml
-  steps:
-    - name: Build Multi-platform Image
-      uses: drewbernetes/container-security-action@main
-      with:
-        image-repo: "ghcr.io"
-        repo-username: ${{ github.actor }}
-        repo-password: ${{ secrets.GITHUB_TOKEN }}
-        image-name: "my-image"
-        image-tag: "1.0"
-        publish-image: "true"
-        platforms: "linux/amd64,linux/arm64"
-        cosign-private-key: ${{ secrets.COSIGN_KEY }}
-        cosign-password: ${{ secrets.COSIGN_PASSWORD }}
-  ```
+```yaml
+steps:
+  - name: Build Multi-platform Image
+    uses: drewbernetes/container-security-action@main
+    with:
+      image-repo: "ghcr.io"
+      repo-username: ${{ github.actor }}
+      repo-password: ${{ secrets.GITHUB_TOKEN }}
+      image-name: "my-image"
+      image-tag: "1.0"
+      publish-image: "true"
+      platforms: "linux/amd64,linux/arm64"
+      cosign-private-key: ${{ secrets.COSIGN_KEY }}
+      cosign-password: ${{ secrets.COSIGN_PASSWORD }}
+```
 
-  ## Publishing Results
+### CVE Outputs
 
-  The result of the scan will be uploaded as artifacts within the repo however, if you have it enabled, you can have
-  this pushed to the GitHub Dependency graph instead by adding the following input parameters:
+The action provides structured CVE data as outputs, available even when the scan fails the build.
+This lets you build custom notification workflows, gate deployments, or generate reports.
 
-  ```
-  enable-dependency-graph: true
-  github-token: ${{ secrets.GITHUB_TOKEN }}
-  ```
+```yaml
+steps:
+  - name: Build and Scan
+    id: security
+    uses: drewbernetes/container-security-action@main
+    with:
+      image-repo: "ghcr.io"
+      repo-username: ${{ github.actor }}
+      repo-password: ${{ secrets.GITHUB_TOKEN }}
+      image-name: "my-image"
+      image-tag: "1.0"
+      check-severity: "HIGH,CRITICAL"
+      publish-image: "false"
+      cosign-private-key: ${{ secrets.COSIGN_KEY }}
+      cosign-password: ${{ secrets.COSIGN_PASSWORD }}
 
-  **Hardware token verification is currently not supported.**
-  ## TODO (AKA nice to haves but may not come!):
+  - name: Handle CVEs
+    if: always()
+    run: |
+      echo "${{ steps.security.outputs.cve-summary }}"
+      echo '${{ steps.security.outputs.cve-list }}' | jq '.[] | .id'
+```
 
-  * Support dynamic key generation for Cosign.
-  * Support adding to Rekor (transparency log upload is supported via `cosign-tlog` input)
+The `cve-list` output is a JSON array of objects with the following fields:
+
+| Field | Description |
+| --- | --- |
+| `id` | CVE identifier (e.g. `CVE-2024-1234`) |
+| `severity` | Severity level (`Critical`, `High`, `Medium`, `Low`, `Unknown`) |
+| `package` | Affected package name |
+| `version` | Installed version |
+| `fixed_version` | Fixed version(s), if available |
+| `link` | Link to vulnerability data source |
+
+A markdown summary table is also written to `GITHUB_STEP_SUMMARY` for visibility directly in the Actions UI.
+
+### Skipping the Image Scan
+
+By default, both an SBOM scan and an image scan are performed. The two scans overlap significantly since they
+both use Grype. If you want faster builds and the SBOM scan provides sufficient coverage, you can skip the
+image scan:
+
+```yaml
+steps:
+  - name: Build and Scan (SBOM only)
+    uses: drewbernetes/container-security-action@main
+    with:
+      image-repo: "drewviles"
+      repo-username: ${{ secrets.DOCKER_USER }}
+      repo-password: ${{ secrets.DOCKER_PASSWORD }}
+      image-name: "csa-demo"
+      image-tag: "1.0"
+      skip-image-scan: "true"
+      publish-image: "true"
+      cosign-private-key: ${{ secrets.COSIGN_KEY }}
+      cosign-password: ${{ secrets.COSIGN_PASSWORD }}
+```
+
+### Publishing Results
+
+The result of the scan will be uploaded as artifacts within the repo however, if you have it enabled, you can have
+this pushed to the GitHub Dependency graph instead by adding the following input parameters:
+
+```yaml
+enable-dependency-graph: true
+github-token: ${{ secrets.GITHUB_TOKEN }}
+```
+
+### Tag Sanitization
+
+The `image-tag` input is sanitized to be a valid Docker tag. Forward slashes (`/`) are replaced with hyphens (`-`),
+so branch names like `feature/my-branch` become `feature-my-branch`. This makes it safe to pass branch names
+directly as tags.
+
+**Hardware token verification is currently not supported.**
+
+### TODO (AKA nice to haves but may not come!):
+
+* Support dynamic key generation for Cosign.
+* Support adding to Rekor (transparency log upload is supported via `cosign-tlog` input)
 <!-- action-docs-description source="action.yml" -->
 
 <!-- action-docs-usage source="action.yml" project="drewbernetes/container-security-action" version="main" -->
@@ -240,7 +306,7 @@ steps:
     # A comma delimited (uppercase) list of severities to check for. If found the pipeline will fail. Support values: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
     #
     # Required: false
-    # Default: high
+    # Default: HIGH
 
     severity-fail-on-detection:
     # Whether or not to fail the build should a 'check-severity' level vulnerability be found.
@@ -320,6 +386,12 @@ steps:
     # Required: false
     # Default: .
 
+    skip-image-scan:
+    # If true, skip the container image scan (SBOM scan still runs). Useful for faster builds when SBOM scan provides sufficient coverage.
+    #
+    # Required: false
+    # Default: false
+
     platforms:
     # Comma-separated list of platforms for multi-platform builds (e.g. 'linux/amd64,linux/arm64'). When set, publish-image must be true as multi-platform builds push during build.
     #
@@ -345,7 +417,7 @@ steps:
 | `cosign-tlog` | <p>Set to true to upload to tlog for transparency.</p> | `false` | `false` |
 | `signing-mode` | <p>Signing mode: 'private-key' (requires cosign-private-key and cosign-password) or 'oidc' (keyless, requires id-token: write permission).</p> | `false` | `private-key` |
 | `publish-image` | <p>If true the image will be published to the repo.</p> | `false` | `false` |
-| `check-severity` | <p>A comma delimited (uppercase) list of severities to check for. If found the pipeline will fail. Support values: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL</p> | `false` | `high` |
+| `check-severity` | <p>A comma delimited (uppercase) list of severities to check for. If found the pipeline will fail. Support values: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL</p> | `false` | `HIGH` |
 | `severity-fail-on-detection` | <p>Whether or not to fail the build should a 'check-severity' level vulnerability be found.</p> | `false` | `true` |
 | `grypeignore-file` | <p>Supply a Grype ignore file to ignore specific CVEs and prevent a pipeline failure.</p> | `false` | `.grype.yaml` |
 | `grypeignore-from-s3` | <p>If disabled, the Grype ignore can be supplied via the repo itself but actions/checkout@v4 must be used before calling this action.</p> | `false` | `false` |
@@ -359,6 +431,7 @@ steps:
 | `s3-bucket` | <p>The S3 bucket in which the grype ignore file is stored.</p> | `false` | `grypeignores` |
 | `s3-path` | <p>The path in the s3 bucket to the grype ignore file.</p> | `false` | `.grype.yaml` |
 | `dockerfile-path` | <p>Path to the Dockerfile (default {context}/Dockerfile).</p> | `false` | `.` |
+| `skip-image-scan` | <p>If true, skip the container image scan (SBOM scan still runs). Useful for faster builds when SBOM scan provides sufficient coverage.</p> | `false` | `false` |
 | `platforms` | <p>Comma-separated list of platforms for multi-platform builds (e.g. 'linux/amd64,linux/arm64'). When set, publish-image must be true as multi-platform builds push during build.</p> | `false` | `""` |
 <!-- action-docs-inputs source="action.yml" -->
 
@@ -371,4 +444,7 @@ steps:
 | `sbom-path` | <p>Path to the generated SBOM file</p> |
 | `scan-passed` | <p>'true' if the vulnerability scan passed, 'false' otherwise</p> |
 | `image-ref` | <p>Full image reference (registry/name:tag)</p> |
+| `cve-list` | <p>JSON array of CVE objects with id, severity, package, version, fixed_version</p> |
+| `cve-count` | <p>Integer count of CVEs at or above the configured severity threshold</p> |
+| `cve-summary` | <p>Human-readable summary of CVE findings</p> |
 <!-- action-docs-outputs source="action.yml" -->
