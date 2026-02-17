@@ -33,7 +33,8 @@ elif echo "${INPUT_IMAGE_REPO}" | grep -qE '(\.|/)'; then
   IS_DOCKERHUB="false"
 fi
 
-VERSION_TAG="${INPUT_IMAGE_TAG}"
+# Sanitize tag: Docker tags cannot contain '/' (common in branch names like 'feature/foo')
+VERSION_TAG=$(echo "${INPUT_IMAGE_TAG}" | sed 's|/|-|g')
 IMAGE_REF="${REPO}/${INPUT_IMAGE_NAME}"
 
 # Build space-separated tag list
