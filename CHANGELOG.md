@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.2.3] - 2026-02-17
+## [0.3.0] - 2026-02-17
 
 ### :gear: Changed
 - Automated changelog update by @nscale-actions[bot]
@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bump sigstore/cosign-installer from 3.9.2 to 4.0.0 by @dependabot[bot] in [#26](https://github.com/drewbernetes/container-security-action/pull/26)
 - Bump anchore/scan-action from 6.5.1 to 7.1.0 by @dependabot[bot] in [#29](https://github.com/drewbernetes/container-security-action/pull/29)
 - Bump anchore/sbom-action from 0.20.4 to 0.20.9 by @dependabot[bot] in [#30](https://github.com/drewbernetes/container-security-action/pull/30)
+
+### :rocket: Added
+- Adding new outputs for digest and CVE info by @drew-viles in [#31](https://github.com/drewbernetes/container-security-action/pull/31)
 
 ## New Contributors
 * @dependabot[bot] made their first contribution in [#24](https://github.com/drewbernetes/container-security-action/pull/24)
@@ -71,7 +74,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## New Contributors
 * @drew-viles made their first contribution
-[0.2.3]: https://github.com/drewbernetes/container-security-action/compare/v0.2.2..v0.2.3
+[0.3.0]: https://github.com/drewbernetes/container-security-action/compare/v0.2.2..v0.3.0
 [0.2.2]: https://github.com/drewbernetes/container-security-action/compare/v0.2.0..v0.2.2
 [0.2.0]: https://github.com/drewbernetes/container-security-action/compare/v0.1.0..v0.2.0
 [0.1.0]: https://github.com/drewbernetes/container-security-action/compare/v0.0.4..v0.1.0
