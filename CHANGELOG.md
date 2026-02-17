@@ -5,7 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.2.1] - 2025-08-11
+## [0.2.3] - 2026-02-17
+
+### :package: Build
+- Bump anchore/sbom-action from 0.20.4 to 0.20.9 by @dependabot[bot] in [#30](https://github.com/drewbernetes/container-security-action/pull/30)
+
+## New Contributors
+* @dependabot[bot] made their first contribution in [#30](https://github.com/drewbernetes/container-security-action/pull/30)
+## [0.2.2] - 2025-08-11
 
 ### :books: Documentation
 - Updating cahngelog and git cliff by @drew-viles
@@ -15,9 +22,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updating dependencies and adding automated changelog process by @drew-viles in [#11](https://github.com/drewbernetes/container-security-action/pull/11)
 
 ### :gear: Changed
+- Automated changelog update by @nscale-actions[bot]
 - Update dependabot.yml by @drew-viles in [#9](https://github.com/drewbernetes/container-security-action/pull/9)
 - Adding build arg support, pinning actions to sha and adding dependabot by @drew-viles in [#8](https://github.com/drewbernetes/container-security-action/pull/8)
 
+## New Contributors
+* @nscale-actions[bot] made their first contribution
 ## [0.2.0] - 2024-12-17
 
 ### :rocket: Added
@@ -54,7 +64,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## New Contributors
 * @drew-viles made their first contribution
-[0.2.1]: https://github.com/drewbernetes/container-security-action/compare/v0.2.0..v0.2.1
+[0.2.3]: https://github.com/drewbernetes/container-security-action/compare/v0.2.2..v0.2.3
+[0.2.2]: https://github.com/drewbernetes/container-security-action/compare/v0.2.0..v0.2.2
 [0.2.0]: https://github.com/drewbernetes/container-security-action/compare/v0.1.0..v0.2.0
 [0.1.0]: https://github.com/drewbernetes/container-security-action/compare/v0.0.4..v0.1.0
 [0.0.4]: https://github.com/drewbernetes/container-security-action/compare/v0.0.3..v0.0.4
