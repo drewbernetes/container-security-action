@@ -235,7 +235,7 @@ runs:
     # Create an SBOM file for the local image and upload the results
     - name: Create SBOM (Push to Dependency Graph if enabled)
       if: env.MULTIPLATFORM_BUILD != 'true'
-      uses: anchore/sbom-action@8e94d75ddd33f69f691467e42275782e4bfefe84 # v0.20.9
+      uses: anchore/sbom-action@28d71544de8eaf1b958d335707167c5f783590ad # v0.22.2
       with:
         format: spdx-json
         output-file: "${{ inputs.image-name }}-sbom.spdx.json"
@@ -246,7 +246,7 @@ runs:
     # Create SBOM for multi-platform builds (from Dockerfile/context instead of local image)
     - name: Create SBOM from Dockerfile (Multi-platform)
       if: env.MULTIPLATFORM_BUILD == 'true'
-      uses: anchore/sbom-action@7b36ad622f042cab6f59a75c2ac24ccb256e9b45 # v0.20.4
+      uses: anchore/sbom-action@28d71544de8eaf1b958d335707167c5f783590ad # v0.22.2
       with:
         format: spdx-json
         output-file: "${{ inputs.image-name }}-sbom.spdx.json"
