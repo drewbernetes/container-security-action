@@ -268,7 +268,7 @@ runs:
 
     # Upload the SBOM scan results regardless of scan pass or failure
     - name: Upload SBOM Scan Results
-      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
       if: (success() || failure()) && (steps.scan-sbom.conclusion == 'success' || steps.scan-sbom.outcome == 'failure')
       with:
         name: "${{ inputs.image-name }}-sbom-results.json"
@@ -289,7 +289,7 @@ runs:
 
     # Upload the image scan results regardless of scan pass or failure
     - name: Upload Container Scan Results
-      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
       if: env.MULTIPLATFORM_BUILD != 'true' && inputs.skip-image-scan != 'true' && (success() || failure()) && (steps.image-scan.conclusion == 'success' || steps.image-scan.outcome == 'failure')
       with:
         name: "${{ inputs.image-name }}-scan-results.json"
